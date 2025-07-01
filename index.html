@@ -1,0 +1,2592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipflow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 70vh;
+        }
+
+        .upload-zone {
+            text-align: center;
+            padding: 80px 40px;
+            border: 3px dashed #e2e8f0;
+            margin: 40px;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: #667eea;
+            background: #f8faff;
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.drag-over {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .upload-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f8fafc;
+            color: #64748b;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .video-workspace {
+            display: none;
+            height: 100%;
+        }
+
+        .workspace-header {
+            background: #f8fafc;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .progress-steps {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .step.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .step.completed {
+            background: #10b981;
+            color: white;
+        }
+
+        .step.inactive {
+            background: #e2e8f0;
+            color: #64748b;
+        }
+
+        .workspace-content {
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - 200px);
+            gap: 0;
+        }
+
+        .main-editing-area {
+            display: flex;
+            gap: 0;
+            height: 70vh;
+            max-height: 800px;
+        }
+
+        .audio-generate-section {
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 30px;
+            flex-shrink: 0;
+            min-height: 250px;
+        }
+
+        .preview-area {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .video-preview {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            max-height: 40vh;
+            height: 40vh;
+        }
+
+        .video-preview video,
+        .video-preview iframe,
+        #youtubePreviewContainer iframe {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+            border: none;
+        }
+
+        .video-timeline {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 140px;
+            overflow-x: auto;
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .timeline-header h3 {
+            margin: 0;
+            color: #374151;
+            font-size: 1.1rem;
+        }
+
+        .timeline-tracks {
+            display: flex;
+            gap: 15px;
+            min-height: 80px;
+            align-items: flex-start;
+            padding-bottom: 10px;
+        }
+
+        .video-clip {
+            min-width: 160px;
+            background: white;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-clip:hover {
+            transform: translateY(-2px);
+            border-color: #667eea;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+
+        .video-clip.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .clip-thumbnail {
+            width: 100%;
+            height: 90px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .clip-thumbnail video,
+        .clip-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border: none;
+            background: #000;
+        }
+
+        .clip-thumbnail video::-webkit-media-controls {
+            display: none !important;
+        }
+
+        .clip-thumbnail video::-webkit-media-controls-enclosure {
+            display: none !important;
+        }
+
+        /* YouTube segment hover controls */
+        .segment-hover-controls {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .video-clip:hover .segment-hover-controls {
+            display: flex;
+        }
+
+        .hover-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .hover-btn:hover {
+            background: white;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .hover-btn.play-btn {
+            color: #10b981;
+        }
+
+        .hover-btn.settings-btn {
+            color: #667eea;
+        }
+
+        /* File drop area hover effects */
+        #fileDropArea:hover {
+            border-color: #667eea !important;
+            background: #f8faff !important;
+            transform: translateY(-2px);
+        }
+
+        #fileDropArea.drag-over {
+            border-color: #667eea !important;
+            background: #f0f4ff !important;
+            transform: scale(1.02);
+        }
+
+        /* Audio drop area hover effects */
+        #audioDropArea:hover {
+            border-color: #667eea !important;
+            background: #f8faff !important;
+            transform: translateY(-2px);
+        }
+
+        #audioDropArea.drag-over {
+            border-color: #667eea !important;
+            background: #f0f4ff !important;
+            transform: scale(1.02);
+        }
+
+        /* YouTube Editor Responsive */
+        @media (max-width: 1024px) {
+            #youtubeEditorOverlay .overlay-content > div {
+                flex-direction: column !important;
+            }
+            
+            #youtubeEditorOverlay .overlay-content > div > div:first-child {
+                margin-bottom: 20px;
+                padding-right: 0 !important;
+                height: 50vh !important;
+            }
+
+            .overlay-header {
+                padding: 15px 20px !important;
+            }
+
+            .overlay-header h2 {
+                font-size: 1.1rem !important;
+            }
+
+            .overlay-header button {
+                font-size: 0.8rem !important;
+            }
+        }
+
+        .clip-info {
+            padding: 12px;
+        }
+
+        .clip-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 140px;
+        }
+
+        .clip-meta {
+            font-size: 0.8rem;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .clip-duration {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .add-more-btn {
+            min-width: 120px;
+            height: 134px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #64748b;
+        }
+
+        .add-more-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+            background: #f8faff;
+        }
+
+        .editing-panel {
+            flex: 1;
+            background: #f8fafc;
+            border-left: 1px solid #e2e8f0;
+            padding: 30px;
+            overflow-y: auto;
+            min-width: 0; /* Ensure proper flex behavior */
+            max-height: 70vh;
+        }
+
+        .edit-section {
+            margin-bottom: 30px;
+        }
+
+        .edit-section h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #e2e8f0;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .generate-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 16px 32px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Fullscreen Overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .overlay-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            max-height: 80vh;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        #youtubeEditorOverlay .overlay-content {
+            max-height: 95vh;
+            height: 95vh;
+        }
+
+        .overlay.active .overlay-content {
+            transform: translateY(0);
+        }
+
+        .overlay-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .overlay-tabs {
+            display: flex;
+            gap: 20px;
+            padding: 0 30px;
+            background: #f8fafc;
+        }
+
+        .tab {
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+        }
+
+        .tab-content {
+            padding: 30px;
+            min-height: 300px;
+        }
+
+        .url-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            transition: border-color 0.3s ease;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .segment-item {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .segment-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .segment-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .time-input {
+            width: 80px;
+            padding: 6px 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .segment-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .delete-segment {
+            background: #ef4444;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            margin-left: auto;
+        }
+
+        .delete-segment:hover {
+            background: #dc2626;
+        }
+
+        @media (max-width: 768px) {
+            .workspace-content {
+                min-height: auto;
+            }
+
+            .main-editing-area {
+                flex-direction: column;
+                height: auto;
+                max-height: none;
+            }
+            
+            .preview-area {
+                flex: none;
+                min-height: 40vh;
+                max-height: none;
+            }
+            
+            .editing-panel {
+                flex: none;
+                border-left: none;
+                border-top: 1px solid #e2e8f0;
+                min-height: 40vh;
+                max-height: none;
+            }
+
+            .audio-generate-section {
+                min-height: 200px;
+            }
+
+            .audio-generate-section > div {
+                grid-template-columns: 1fr !important;
+                gap: 20px !important;
+            }
+            
+            .upload-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .video-preview {
+                max-height: 30vh;
+                height: 30vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>Clipflow</h1>
+            <p>Merge videos and YouTube clips with professional editing tools</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Upload State -->
+            <div id="uploadState" class="upload-zone">
+                <div class="upload-icon">📹</div>
+                <h2>Add Your Videos</h2>
+                <p>Drag and drop video files or add YouTube URLs to get started</p>
+                
+                <div class="upload-buttons">
+                    <button class="btn btn-primary" onclick="showUploadOverlay()">
+                        📁 Upload Videos
+                    </button>
+                    <button class="btn btn-secondary" onclick="showYouTubeOverlay()">
+                        🎬 Add YouTube Clips
+                    </button>
+                </div>
+            </div>
+
+            <!-- Workspace -->
+            <div id="workspace" class="video-workspace">
+                <div class="workspace-header">
+                    <div class="progress-steps">
+                        <div class="step active">
+                            <span>📁</span> Add Videos
+                        </div>
+                        <div class="step inactive">
+                            <span>✂️</span> Edit
+                        </div>
+                        <div class="step inactive">
+                            <span>🎬</span> Generate
+                        </div>
+                    </div>
+                </div>
+
+                <div class="workspace-content">
+                    <div class="main-editing-area">
+                        <div class="preview-area">
+                            <div class="video-preview">
+                                <div>🎬 Select a video clip to preview</div>
+                            </div>
+
+                            <div class="video-timeline">
+                                <div class="timeline-header">
+                                    <h3>📹 Video Clips</h3>
+                                    <span style="font-size: 0.9rem; color: #64748b;">${videoClips.length} clips added</span>
+                                </div>
+                                <div class="timeline-tracks" id="timelineTracks">
+                                    <!-- Video clips will be added here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="editing-panel">
+                            <div class="edit-section">
+                                <h3>🎯 Playback Speed</h3>
+                                <div class="control-group">
+                                    <label>Speed Control</label>
+                                    <select id="playbackSpeed" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 5px;" onchange="updatePlaybackSpeed(this.value)">
+                                        <option value="0.1">0.1x (Ultra Slow)</option>
+                                        <option value="0.25">0.25x (Very Slow)</option>
+                                        <option value="0.5">0.5x (Slow)</option>
+                                        <option value="1" selected>1x (Normal)</option>
+                                        <option value="2">2x (Fast)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="edit-section">
+                                <h3>🎨 Output Settings</h3>
+                                <div class="control-group">
+                                    <label>Output Size</label>
+                                    <select id="outputSize" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                        <option value="16:9">16:9 (Landscape)</option>
+                                        <option value="9:16">9:16 (Portrait)</option>
+                                        <option value="1:1">1:1 (Square)</option>
+                                        <option value="4:3" selected>4:3 (Standard)</option>
+                                        <option value="3:4">3:4 (Vertical)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="edit-section" id="editingControls">
+                                <!-- This will be populated based on selected clip type -->
+                            </div>
+
+                            <div class="edit-section">
+                                <h3>🔊 Audio Controls</h3>
+                                <div class="control-group">
+                                    <label>Volume</label>
+                                    <div class="slider-container">
+                                        <span>🔇</span>
+                                        <input type="range" class="slider" min="0" max="100" value="80">
+                                        <span>🔊</span>
+                                    </div>
+                                </div>
+                                <div class="control-group">
+                                    <label style="display: flex; align-items: center; gap: 10px;">
+                                        Mute Audio
+                                        <label class="toggle-switch">
+                                            <input type="checkbox">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audio & Generate Section -->
+                    <div class="audio-generate-section">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: stretch;">
+                            <!-- Audio Section -->
+                            <div style="background: #f8fafc; border-radius: 12px; padding: 25px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                                    <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #374151;">
+                                        🎵 Background Audio
+                                    </h3>
+                                    <button class="btn btn-secondary" onclick="showAudioUploadOverlay()" style="display: flex; align-items: center; gap: 8px;">
+                                        🎧 Add Audio Files
+                                    </button>
+                                </div>
+                                
+                                <div id="audioTimeline" style="min-height: 120px; background: white; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; color: 
+#64748b; border: 1px solid #e2e8f0;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 1.5rem; margin-bottom: 8px;">🎵</div>
+                                        <div>No background audio added yet</div>
+                                        <div style="font-size: 0.8rem; margin-top: 4px;">Add audio files to enhance your video</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Generate Section -->
+                            <div style="display: flex; flex-direction: column; justify-content: center; padding: 25px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; 
+text-align: center; border: 1px solid #e0f2fe;">
+                                <div style="font-size: 3rem; margin-bottom: 15px;">🚀</div>
+                                <h2 style="margin-bottom: 10px; color: #374151;">Ready to Generate?</h2>
+                                <p style="margin-bottom: 25px; color: #64748b; font-size: 1rem;">
+                                    All clips configured and ready to merge into your final video
+                                </p>
+                                <button class="generate-btn" onclick="generateVideo()" style="font-size: 1.1rem; padding: 16px 32px; width: 100%; max-width: 280px; margin: 0 auto;">
+                                    🎬 Generate Merged Video
+                                </button>
+                                <div style="margin-top: 15px; font-size: 0.8rem; color: #64748b;">
+                                    Processing time depends on video length and quality settings
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Overlay -->
+    <div id="uploadOverlay" class="overlay">
+        <div class="overlay-content">
+            <div class="overlay-header">
+                <h2>Add Content</h2>
+                <button onclick="closeOverlay()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">✕</button>
+            </div>
+            
+            <div class="overlay-tabs">
+                <div class="tab active" onclick="switchTab('files')">📁 Device Files</div>
+                <div class="tab" onclick="switchTab('youtube')">🎬 YouTube URLs</div>
+                <div class="tab" onclick="switchTab('audio')">🎵 Audio Files</div>
+            </div>
+
+            <div class="tab-content">
+                <div id="filesTab">
+                    <div id="fileDropArea" style="border: 2px dashed #e2e8f0; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s ease;" 
+onclick="document.getElementById('fileInput').click()">
+                        <div style="font-size: 2rem; margin-bottom: 15px;">📁</div>
+                        <h3 style="margin-bottom: 10px;">Add or drag and drop videos</h3>
+                        <p style="color: #64748b; margin-bottom: 20px;">
+                            <strong>Supported formats:</strong> MP4, MOV, AVI, WMV, FLV, MKV, WEBM
+                        </p>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px;">
+                            <span style="color: #64748b;">Click anywhere to browse</span>
+                            <span style="color: #cbd5e1;">or</span>
+                            <span style="color: #64748b;">drag files here</span>
+                        </div>
+                        <input type="file" id="fileInput" multiple accept="video/*,.mp4,.mov,.avi,.wmv,.flv,.mkv,.webm" style="display: none;">
+                        <div class="btn btn-primary" style="pointer-events: none; display: inline-flex;">
+                            📂 Browse Files
+                        </div>
+                    </div>
+                </div>
+
+                <div id="youtubeTab" style="display: none;">
+                    <h3 style="margin-bottom: 15px;">Add YouTube Video</h3>
+                    <input type="text" class="url-input" id="youtubeUrl" placeholder="Paste YouTube URL here (e.g., https://youtube.com/watch?v=...)">
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-weight: 500; color: #374151; margin-bottom: 8px;">Video Quality</label>
+                        <select id="videoQuality" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem;">
+                            <option value="720p">720p HD</option>
+                            <option value="1080p" selected>1080p Full HD</option>
+                            <option value="1440p">1440p 2K</option>
+                            <option value="2160p">2160p 4K</option>
+                            <option value="auto">Auto (Best Available)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="addYouTubeVideo()">Add Video</button>
+                    
+                    <div style="margin-top: 30px; padding: 20px; background: #f0f9ff; border-radius: 12px;">
+                        <h4>📌 Pro Tips:</h4>
+                        <ul style="margin-top: 10px; color: #64748b;">
+                            <li>You can add multiple clips from the same video</li>
+                            <li>Select quality based on your final output needs</li>
+                            <li>Higher quality = larger file size and longer processing time</li>
+                            <li>If duration shows "Unknown", you can manually set it after adding the video</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="audioTab" style="display: none;">
+                    <h3 style="margin-bottom: 15px;">Add Background Audio</h3>
+                    <div id="audioDropArea" style="border: 2px dashed #e2e8f0; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s ease;" 
+onclick="document.getElementById('audioInput').click()">
+                        <div style="font-size: 2rem; margin-bottom: 15px;">🎵</div>
+                        <h3 style="margin-bottom: 10px;">Add or drag and drop audio files</h3>
+                        <p style="color: #64748b; margin-bottom: 20px;">
+                            <strong>Supported formats:</strong> MP3, WAV, AAC, M4A, OGG, FLAC
+                        </p>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px;">
+                            <span style="color: #64748b;">Click anywhere to browse</span>
+                            <span style="color: #cbd5e1;">or</span>
+                            <span style="color: #64748b;">drag audio files here</span>
+                        </div>
+                        <input type="file" id="audioInput" multiple accept="audio/*,.mp3,.wav,.aac,.m4a,.ogg,.flac" style="display: none;">
+                        <div class="btn btn-primary" style="pointer-events: none; display: inline-flex;">
+                            🎧 Browse Audio Files
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 30px; padding: 20px; background: #f0f9ff; border-radius: 12px;">
+                        <h4>🎼 Audio Tips:</h4>
+                        <ul style="margin-top: 10px; color: #64748b;">
+                            <li>Audio will play as background music throughout your video</li>
+                            <li>Use instrumental tracks for best results</li>
+                            <li>Audio will be automatically adjusted to match video length</li>
+                            <li>You can adjust volume levels in the audio controls section</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- YouTube Editor Overlay -->
+    <div id="youtubeEditorOverlay" class="overlay">
+        <div class="overlay-content" style="max-height: 95vh; height: 95vh;">
+            <div class="overlay-header">
+                <h2 id="youtubeEditorTitle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-weight: 500; font-size: 1.3rem; margin: 0; color: #374151;">YouTube 
+Editor</h2>
+                <button onclick="closeYouTubeEditor()" style="background: none; border: none; font-size: 0.9rem; cursor: pointer; color: #64748b; font-weight: 500; display: flex; align-items: center; gap: 
+4px;">Close ✕</button>
+            </div>
+
+            <div style="display: flex; flex-direction: row; height: calc(95vh - 80px); gap: 20px; padding: 20px;">
+                <!-- Left Side - Preview -->
+                <div style="flex: 1; display: flex; flex-direction: column; padding-right: 10px; min-width: 0;">
+                    <div id="youtubePreviewContainer" style="width: 100%; height: 75%; background: #000; border-radius: 12px; overflow: hidden;">
+                        <!-- YouTube iframe will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Right Side - Settings -->
+                <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 10px; min-width: 0;">
+                    <!-- YouTube URL and Basic Settings -->
+                    <div style="margin-bottom: 25px;">
+                        <label style="display: block; font-weight: 500; color: #374151; margin-bottom: 8px;">YouTube URL</label>
+                        <input type="text" id="editYoutubeUrl" class="url-input" readonly style="background: #f8fafc; font-size: 0.9rem; padding: 10px;">
+                        
+                        <div style="display: flex; gap: 15px; margin-top: 15px;">
+                            <div style="flex: 1;">
+                                <label style="display: block; font-weight: 500; color: #374151; margin-bottom: 8px; font-size: 0.9rem;">Video Quality</label>
+                                <select id="editVideoQuality" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem;">
+                                    <option value="720p">720p HD</option>
+                                    <option value="1080p">1080p Full HD</option>
+                                    <option value="1440p">1440p 2K</option>
+                                    <option value="2160p">2160p 4K</option>
+                                    <option value="auto">Auto (Best Available)</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; font-weight: 500; color: #374151; margin-bottom: 8px; font-size: 0.9rem;">Video Duration</label>
+                                <input type="text" id="editVideoDuration" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem;" placeholder="e.g., 4:32" 
+onchange="updateVideoDuration()">
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-top: 5px;">Manual override if auto-detection fails</div>
+                    </div>
+
+                    <!-- Segments Management -->
+                    <div style="flex: 1; display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0; font-size: 1.1rem;">✂️ Video Segments</h3>
+                            <button class="btn btn-primary" onclick="addYouTubeSegmentInEditor()" style="padding: 6px 12px; font-size: 0.8rem;">
+                                ➕ Add Segment
+                            </button>
+                        </div>
+                        <div id="youtubeSegmentsList" style="flex: 1; overflow-y: auto; max-height: 400px;">
+                            <!-- Segments will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Save Changes -->
+                    <div style="text-align: center; padding: 15px 0; border-top: 1px solid #e2e8f0; margin-top: 20px; flex-shrink: 0;">
+                        <button class="btn btn-primary" onclick="saveYouTubeChanges()" style="padding: 10px 20px; font-size: 0.9rem; margin-right: 10px;">
+                            💾 Save Changes
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeYouTubeEditor()" style="padding: 10px 20px; font-size: 0.9rem;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let videoClips = [];
+        let audioClips = [];
+        let selectedClip = null;
+        let userID = null;
+
+        // Generate or retrieve userID
+        function getUserID() {
+            if (!userID) {
+                userID = localStorage.getItem('video_merger_user_id');
+                if (!userID) {
+                    userID = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    localStorage.setItem('video_merger_user_id', userID);
+                }
+            }
+            return userID;
+        }
+
+        // Initialize userID on page load
+        getUserID();
+
+        // Initialize playback speed
+        window.currentPlaybackSpeed = 1.0;
+
+        // Initialize editing controls
+        document.addEventListener('DOMContentLoaded', function() {
+            updateEditingControls(null);
+        });
+
+        function showUploadOverlay() {
+            document.getElementById('uploadOverlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('uploadOverlay').classList.add('active');
+            }, 10);
+            switchTab('files');
+        }
+
+        function showYouTubeOverlay() {
+            document.getElementById('uploadOverlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('uploadOverlay').classList.add('active');
+            }, 10);
+            switchTab('youtube');
+        }
+
+        function closeOverlay() {
+            document.getElementById('uploadOverlay').classList.remove('active');
+            setTimeout(() => {
+                document.getElementById('uploadOverlay').style.display = 'none';
+            }, 300);
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+            
+            document.getElementById('filesTab').style.display = tab === 'files' ? 'block' : 'none';
+            document.getElementById('youtubeTab').style.display = tab === 'youtube' ? 'block' : 'none';
+            document.getElementById('audioTab').style.display = tab === 'audio' ? 'block' : 'none';
+        }
+
+        async function addYouTubeVideo() {
+            const url = document.getElementById('youtubeUrl').value;
+            const quality = document.getElementById('videoQuality').value;
+            if (url) {
+                // Extract video info from URL
+                const videoId = extractYouTubeId(url);
+                const clip = {
+                    id: Date.now(),
+                    type: 'youtube',
+                    url: url,
+                    videoId: videoId,
+                    quality: quality,
+                    title: 'Loading...',
+                    duration: '0:00',
+                    segments: [],
+                    options: {
+                        slowmotion: false,
+                        mute: false
+                    }
+                };
+                
+                videoClips.push(clip);
+                updateTimeline();
+                switchToWorkspace();
+                closeOverlay();
+                document.getElementById('youtubeUrl').value = '';
+                
+                // Get real video info
+                if (videoId) {
+                    try {
+                        // Show loading state
+                        console.log('Fetching YouTube video info...');
+                        
+                        const videoInfo = await getYouTubeVideoInfo(videoId);
+                        clip.title = videoInfo.title;
+                        clip.duration = videoInfo.duration;
+                        clip.segments = [{ 
+                            index: 0,
+                            timeline: { start: '0:00', end: '0:30' },
+                            options: { slowmotion: false, mute: false }
+                        }];
+                        updateTimeline();
+                        if (selectedClip === clip.id) {
+                            updateEditingControls(clip);
+                        }
+                        
+                        // Show success notification
+                        console.log(`✅ YouTube data loaded: "${clip.title}" (${clip.duration})`);
+                        
+                    } catch (error) {
+                        console.error('Error fetching YouTube data:', error);
+                        clip.title = `YouTube Video (${videoId})`;
+                        clip.duration = 'Unknown';
+                        clip.segments = [{ 
+                            index: 0,
+                            timeline: { start: '0:00', end: '0:30' },
+                            options: { slowmotion: false, mute: false }
+                        }];
+                        updateTimeline();
+                        
+                        // Show error notification
+                        console.log('⚠️ Could not fetch YouTube data automatically. You can set the duration manually in the editor.');
+                    }
+                }
+            }
+        }
+
+        function updateTimeline() {
+            const container = document.getElementById('timelineTracks');
+            container.innerHTML = '';
+            
+            let totalClips = 0;
+            
+            videoClips.forEach(clip => {
+                if (clip.type === 'youtube') {
+                    // For YouTube videos, show each segment as a separate clip
+                    if (clip.segments && clip.segments.length > 0) {
+                        clip.segments.forEach((segment, segmentIndex) => {
+                            totalClips++;
+                            const segmentElement = createTimelineClip(clip, segment, segmentIndex);
+                            container.appendChild(segmentElement);
+                        });
+                    }
+                } else {
+                    // For regular videos, show as single clip
+                    totalClips++;
+                    const clipElement = createTimelineClip(clip);
+                    container.appendChild(clipElement);
+                }
+            });
+            
+            // Update timeline header count
+            const header = document.querySelector('.timeline-header span');
+            if (header) {
+                header.textContent = `${totalClips} clips added`;
+            }
+            
+            // Add "Add More" button
+            const addMoreBtn = document.createElement('div');
+            addMoreBtn.className = 'add-more-btn';
+            addMoreBtn.innerHTML = `
+                <div style="font-size: 1.5rem; margin-bottom: 8px;">➕</div>
+                <div style="font-size: 0.9rem; font-weight: 500;">Add More</div>
+            `;
+            addMoreBtn.onclick = () => showUploadOverlay();
+            container.appendChild(addMoreBtn);
+        }
+
+        function createTimelineClip(clip, segment = null, segmentIndex = null) {
+            const clipElement = document.createElement('div');
+            clipElement.className = 'video-clip';
+            
+            // Create thumbnail
+            const thumbnail = document.createElement('div');
+            thumbnail.className = 'clip-thumbnail';
+            
+            if (clip.type === 'file' && clip.file) {
+                // Create a video element for thumbnail
+                const video = document.createElement('video');
+                video.muted = true;
+                video.preload = 'metadata';
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'cover';
+                
+                // Create blob URL for the file
+                try {
+                    const blobUrl = URL.createObjectURL(clip.file);
+                    video.src = blobUrl;
+                    
+                    // Generate thumbnail at 1 second
+                    video.addEventListener('loadedmetadata', () => {
+                        video.currentTime = Math.min(1, video.duration / 4);
+                    });
+                    
+                    thumbnail.appendChild(video);
+                } catch (error) {
+                    console.error('Error creating video thumbnail:', error);
+                    thumbnail.innerHTML = '<div style="font-size: 1.5rem;">📹</div>';
+                }
+            } else if (clip.type === 'youtube' && clip.videoId) {
+                // YouTube thumbnail
+                const img = document.createElement('img');
+                img.src = `https://img.youtube.com/vi/${clip.videoId}/mqdefault.jpg`;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover';
+                img.onerror = () => {
+                    thumbnail.innerHTML = '<div style="font-size: 1.5rem;">🎬</div>';
+                };
+                thumbnail.appendChild(img);
+                
+                // Add segment indicator for YouTube clips
+                if (segment) {
+                    const segmentIndicator = document.createElement('div');
+                    segmentIndicator.style.cssText = `
+                        position: absolute;
+                        top: 4px;
+                        right: 4px;
+                        background: rgba(0,0,0,0.7);
+                        color: white;
+                        padding: 2px 6px;
+                        border-radius: 10px;
+                        font-size: 0.7rem;
+                        font-weight: bold;
+                        z-index: 2;
+                    `;
+                    segmentIndicator.textContent = `#${segmentIndex + 1}`;
+                    thumbnail.appendChild(segmentIndicator);
+
+                    // Add hover controls for YouTube segments
+                    const hoverControls = document.createElement('div');
+                    hoverControls.className = 'segment-hover-controls';
+                    
+                    const playBtn = document.createElement('button');
+                    playBtn.className = 'hover-btn play-btn';
+                    playBtn.innerHTML = '▶️';
+                    playBtn.title = 'Preview Segment';
+                    playBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        playYouTubeSegment(clip, segment);
+                    };
+                    
+                    const settingsBtn = document.createElement('button');
+                    settingsBtn.className = 'hover-btn settings-btn';
+                    settingsBtn.innerHTML = '⚙️';
+                    settingsBtn.title = 'Edit Segment';
+                    settingsBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        openYouTubeSegmentEditor(clip, segmentIndex);
+                    };
+                    
+                    hoverControls.appendChild(playBtn);
+                    hoverControls.appendChild(settingsBtn);
+                    thumbnail.appendChild(hoverControls);
+                }
+            } else {
+                thumbnail.innerHTML = '<div style="font-size: 1.5rem;">📹</div>';
+            }
+            
+            // Create info section
+            const info = document.createElement('div');
+            info.className = 'clip-info';
+            
+            let title, duration, meta = '';
+            
+            if (segment) {
+                // YouTube segment
+                title = `${clip.title} #${segmentIndex + 1}`;
+                duration = calculateSegmentDuration(segment.timeline.start, segment.timeline.end);
+                meta = `${segment.timeline.start}-${segment.timeline.end}`;
+            } else {
+                // Regular video or full YouTube video
+                title = clip.title;
+                duration = clip.duration;
+                if (clip.size) meta += clip.size;
+                if (clip.quality) meta += clip.quality;
+            }
+
+            // Add loading indicator for YouTube videos that are still loading
+            if (clip.type === 'youtube' && clip.title === 'Loading...') {
+                title = 'Loading YouTube data...';
+                duration = '⏳';
+            }
+            
+            // Truncate title if too long but keep full title in tooltip
+            const displayTitle = title.length > 18 ? title.substring(0, 18) + '...' : title;
+            
+            info.innerHTML = `
+                <div class="clip-title" title="${title}">${displayTitle}</div>
+                <div class="clip-meta">
+                    <span class="clip-duration">${duration}</span>
+                    ${meta ? `<span style="font-size: 0.7rem;">${meta}</span>` : ''}
+                </div>
+            `;
+            
+            clipElement.appendChild(thumbnail);
+            clipElement.appendChild(info);
+            
+            // Set click handler
+            if (segment) {
+                clipElement.onclick = () => selectYouTubeSegment(clip, segment, segmentIndex, clipElement);
+            } else if (clip.type === 'youtube') {
+                clipElement.onclick = () => selectYouTubeVideo(clip, clipElement);
+            } else {
+                clipElement.onclick = () => selectClip(clip.id, clipElement);
+            }
+            
+            return clipElement;
+        }
+
+        function selectClip(id, element) {
+            document.querySelectorAll('.video-clip').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedClip = id;
+            
+            const clip = videoClips.find(c => c.id === id);
+            
+            // Update preview with actual video or placeholder
+            const previewContainer = document.querySelector('.video-preview');
+            if (clip.type === 'file' && clip.file) {
+                try {
+                    // Create blob URL for preview
+                    const blobUrl = URL.createObjectURL(clip.file);
+                    
+                    previewContainer.innerHTML = `
+                        <video controls style="width: 100%; height: 100%; object-fit: contain;" preload="metadata">
+                            <source src="${blobUrl}" type="${clip.file.type}">
+                            Your browser does not support video playback.
+                        </video>
+                    `;
+                    
+                    // Apply current playback speed
+                    setTimeout(() => {
+                        const video = previewContainer.querySelector('video');
+                        if (video && window.currentPlaybackSpeed) {
+                            video.playbackRate = window.currentPlaybackSpeed;
+                        }
+                    }, 100);
+                    
+                    // Store blob URL for cleanup later if needed
+                    clip.previewBlobUrl = blobUrl;
+                    
+                } catch (error) {
+                    console.error('Error creating video preview:', error);
+                    previewContainer.innerHTML = `
+                        <div style="text-align: center; color: white;">
+                            <div style="font-size: 2rem; margin-bottom: 10px;">📹</div>
+                            <div>Video: ${clip.title}</div>
+                            <div style="font-size: 0.9rem; color: #ccc; margin-top: 5px;">Preview not available</div>
+                        </div>
+                    `;
+                }
+            } else {
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; color: white;">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">📹</div>
+                        <div>Select a video clip to preview</div>
+                    </div>
+                `;
+            }
+            
+            // Update editing controls based on clip type
+            updateEditingControls(clip);
+        }
+
+        function selectYouTubeSegment(clip, segment, segmentIndex, element) {
+            document.querySelectorAll('.video-clip').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedClip = clip.id;
+            window.selectedSegment = { clip, segment, segmentIndex };
+            
+            // Show segment preview automatically
+            playYouTubeSegment(clip, segment);
+            
+            // Update editing controls for this specific segment
+            updateYouTubeSegmentControls(clip, segment, segmentIndex);
+        }
+
+        function selectYouTubeVideo(clip, element) {
+            document.querySelectorAll('.video-clip').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedClip = clip.id;
+            window.selectedSegment = null;
+            
+            // Show full video preview
+            showFullYouTubePreview(clip);
+            
+            // Update editing controls for full video
+            updateEditingControls(clip);
+        }
+
+        function updateEditingControls(clip) {
+            const controlsContainer = document.getElementById('editingControls');
+            
+            if (clip.type === 'file') {
+                // Show cropping/duration controls for regular videos
+                controlsContainer.innerHTML = `
+                    <h3>✂️ Crop & Adjust Duration</h3>
+                    <div class="control-group">
+                        <label>Trim Video</label>
+                        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                            <span class="segment-label">Start:</span>
+                            <input type="text" class="time-input" value="${clip.segments?.[0]?.start || '0:00'}" 
+                                   onchange="updateFileClipTiming(${clip.id}, 'start', this.value)" placeholder="0:00">
+                            <span class="segment-label">End:</span>
+                            <input type="text" class="time-input" value="${clip.segments?.[0]?.end || clip.duration}" 
+                                   onchange="updateFileClipTiming(${clip.id}, 'end', this.value)" placeholder="${clip.duration}">
+                        </div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 15px;">
+                            Duration: ${clip.segments?.[0] ? calculateSegmentDuration(clip.segments[0].start, clip.segments[0].end) : clip.duration}
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Video Effects</label>
+                        <div style="display: flex; gap: 15px; align-items: center; margin-top: 10px;">
+                            <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9rem;">
+                                <input type="checkbox" ${clip.segments?.[0]?.options?.slowmotion ? 'checked' : ''} 
+                                       onchange="updateFileClipOption(${clip.id}, 'slowmotion', this.checked)">
+                                Slow Motion
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9rem;">
+                                <input type="checkbox" ${clip.segments?.[0]?.options?.mute ? 'checked' : ''} 
+                                       onchange="updateFileClipOption(${clip.id}, 'mute', this.checked)">
+                                Mute Audio
+                            </label>
+                        </div>
+                    </div>
+                `;
+            } else if (clip.type === 'youtube') {
+                // Show YouTube-specific message and button to open editor
+                controlsContainer.innerHTML = `
+                    <h3>🎬 YouTube Video</h3>
+                    <div style="text-align: center; padding: 20px; background: #f8fafc; border-radius: 12px;">
+                        <div style="font-size: 1.2rem; margin-bottom: 10px;">📹</div>
+                        <h4 style="margin-bottom: 10px;">${clip.title}</h4>
+                        <p style="color: #64748b; margin-bottom: 15px; font-size: 0.9rem;">
+                            Click on individual segments in the timeline to edit them, or use the buttons below.
+                        </p>
+                        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                            <button class="btn btn-secondary" onclick="showFullYouTubePreview(videoClips.find(c => c.id === ${clip.id}))" 
+                                    style="flex: 1; justify-content: center;">
+                                📺 Preview Full Video
+                            </button>
+                            <button class="btn btn-primary" onclick="openYouTubeEditor(videoClips.find(c => c.id === ${clip.id}))" 
+                                    style="flex: 1; justify-content: center;">
+                                🎛️ Open Editor
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px;">📊 Segments Overview</h4>
+                        <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
+                            <div style="font-size: 0.9rem; color: #64748b;">
+                                ${clip.segments?.length || 0} segments configured
+                            </div>
+                            ${clip.segments?.map((seg, i) => `
+                                <div style="margin-top: 5px; font-size: 0.8rem;">
+                                    #${i+1}: ${seg.timeline.start} - ${seg.timeline.end} 
+                                    ${seg.options.slowmotion ? '(Slow Motion)' : ''} 
+                                    ${seg.options.mute ? '(Muted)' : ''}
+                                </div>
+                            `).join('') || '<div style="font-size: 0.8rem; color: #94a3b8;">No segments configured</div>'}
+                        </div>
+                    </div>
+                `;
+            } else {
+                controlsContainer.innerHTML = `
+                    <h3>📹 Video Clip</h3>
+                    <div style="text-align: center; padding: 40px; color: #64748b;">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">🎬</div>
+                        <p>Select a video clip to edit its settings</p>
+                    </div>
+                `;
+            }
+        }
+
+        function updateYouTubeSegmentControls(clip, segment, segmentIndex) {
+            const controlsContainer = document.getElementById('editingControls');
+            
+            controlsContainer.innerHTML = `
+                <h3>✂️ YouTube Segment #${segmentIndex + 1}</h3>
+                <div style="background: #f0f4ff; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px; color: #374151;">${clip.title}</h4>
+                    <div style="font-size: 0.9rem; color: #64748b;">
+                        Currently editing segment: ${segment.timeline.start} - ${segment.timeline.end}
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Segment Timing</label>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                        <span class="segment-label">Start:</span>
+                        <input type="text" class="time-input" value="${segment.timeline.start}" 
+                               onchange="updateCurrentSegmentTiming('start', this.value)" placeholder="0:00">
+                        <span class="segment-label">End:</span>
+                        <input type="text" class="time-input" value="${segment.timeline.end}" 
+                               onchange="updateCurrentSegmentTiming('end', this.value)" placeholder="0:30">
+                    </div>
+                    <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 15px;">
+                        Duration: ${calculateSegmentDuration(segment.timeline.start, segment.timeline.end)}
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Segment Effects</label>
+                    <div style="display: flex; gap: 15px; align-items: center; margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9rem;">
+                            <input type="checkbox" ${segment.options.slowmotion ? 'checked' : ''} 
+                                   onchange="updateCurrentSegmentOption('slowmotion', this.checked)">
+                            Slow Motion
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9rem;">
+                            <input type="checkbox" ${segment.options.mute ? 'checked' : ''} 
+                                   onchange="updateCurrentSegmentOption('mute', this.checked)">
+                            Mute Audio
+                        </label>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" onclick="playYouTubeSegment(window.selectedSegment.clip, window.selectedSegment.segment)" 
+                                style="flex: 1; justify-content: center;">
+                            ▶️ Replay Segment
+                        </button>
+                        <button class="btn btn-primary" onclick="openYouTubeSegmentEditor(window.selectedSegment.clip, window.selectedSegment.segmentIndex)" 
+                                style="flex: 1; justify-content: center;">
+                            🎛️ Full Editor
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function extractYouTubeId(url) {
+            const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+
+        async function getYouTubeVideoInfo(videoId) {
+            try {
+                // Try YouTube oEmbed API first (no API key required)
+                const oEmbedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+                
+                const response = await fetch(oEmbedUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Try to get duration from alternative sources
+                    const duration = await getYouTubeDuration(videoId);
+                    
+                    return {
+                        title: data.title || `YouTube Video (${videoId})`,
+                        duration: duration || 'Unknown'
+                    };
+                }
+                
+                // Fallback if oEmbed fails
+                throw new Error('oEmbed failed');
+                
+            } catch (error) {
+                console.log('oEmbed API failed, using fallback...');
+                
+                // Fallback: Try alternative APIs or services
+                try {
+                    // Try using a CORS proxy with YouTube's internal API
+                    const infoUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}`;
+                    const response = await fetch(infoUrl);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const htmlContent = data.contents;
+                        
+                        // Extract title from HTML
+                        const titleMatch = htmlContent.match(/<title[^>]*>([^<]+)<\/title>/i);
+                        const title = titleMatch ? 
+                            titleMatch[1].replace(' - YouTube', '').trim() : 
+                            `YouTube Video (${videoId})`;
+                        
+                        // Try to extract duration from meta tags or JSON-LD
+                        const durationMatch = htmlContent.match(/"lengthSeconds":"(\d+)"/);
+                        let duration = 'Unknown';
+                        if (durationMatch) {
+                            const seconds = parseInt(durationMatch[1]);
+                            duration = formatDuration(seconds);
+                        }
+                        
+                        return {
+                            title: title,
+                            duration: duration
+                        };
+                    }
+                    
+                    throw new Error('Fallback failed');
+                    
+                } catch (fallbackError) {
+                    console.error('All methods failed:', fallbackError);
+                    return {
+                        title: `YouTube Video (${videoId})`,
+                        duration: 'Unknown'
+                    };
+                }
+            }
+        }
+
+        async function getYouTubeDuration(videoId) {
+            try {
+                // Try to use YouTube's internal API endpoints
+                // This is a simplified approach - results may vary due to CORS
+                
+                // Alternative: Use a third-party API service
+                // For production, you'd want to use YouTube Data API with proper API key
+                
+                return null; // Will be handled by the main function
+            } catch (error) {
+                console.error('Duration fetch failed:', error);
+                return null;
+            }
+        }
+
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            } else {
+                return `${minutes}:${secs.toString().padStart(2, '0')}`;
+            }
+        }
+
+        function updatePlaybackSpeed(speed) {
+            const previewVideo = document.querySelector('.video-preview video');
+            if (previewVideo) {
+                previewVideo.playbackRate = parseFloat(speed);
+                console.log(`Playback speed set to ${speed}x`);
+            }
+            
+            // Store the current playback speed for new videos
+            window.currentPlaybackSpeed = parseFloat(speed);
+        }
+
+        function timeToSeconds(timeStr) {
+            const parts = timeStr.split(':');
+            let seconds = 0;
+            
+            if (parts.length === 2) {
+                // MM:SS format
+                seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+            } else if (parts.length === 3) {
+                // HH:MM:SS format
+                seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+            }
+            
+            return seconds;
+        }
+
+        function playYouTubeSegment(clip, segment) {
+            const videoId = extractYouTubeId(clip.url);
+            if (!videoId) {
+                alert('Invalid YouTube URL');
+                return;
+            }
+
+            // Convert time strings to seconds
+            const startSeconds = timeToSeconds(segment.timeline.start);
+            const endSeconds = timeToSeconds(segment.timeline.end);
+            
+            // Update preview with segment-specific YouTube embed
+            const previewContainer = document.querySelector('.video-preview');
+            previewContainer.innerHTML = `
+                <iframe 
+                    width="100%" 
+                    height="100%" 
+                    src="https://www.youtube.com/embed/${videoId}?start=${startSeconds}&end=${endSeconds}&autoplay=1&controls=1&enablejsapi=1" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+                <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.9rem;">
+                    🎬 ${clip.title} - Segment #${segment.index + 1} (${segment.timeline.start} - ${segment.timeline.end})
+                </div>
+            `;
+
+            console.log(`Playing YouTube segment: ${segment.timeline.start} - ${segment.timeline.end}`);
+        }
+
+        function showFullYouTubePreview(clip) {
+            const videoId = extractYouTubeId(clip.url);
+            if (!videoId) {
+                return;
+            }
+
+            const previewContainer = document.querySelector('.video-preview');
+            previewContainer.innerHTML = `
+                <iframe 
+                    width="100%" 
+                    height="100%" 
+                    src="https://www.youtube.com/embed/${videoId}?controls=1&enablejsapi=1" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+                <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.9rem;">
+                    🎬 ${clip.title} (Full Video - ${clip.duration})
+                </div>
+            `;
+        }
+
+
+        
+        function calculateSegmentDuration(start, end) {
+            const startSeconds = timeToSeconds(start);
+            const endSeconds = timeToSeconds(end);
+            const durationSeconds = Math.max(0, endSeconds - startSeconds);
+            return secondsToTime(durationSeconds);
+        }
+        
+        function secondsToTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+
+
+        function switchToWorkspace() {
+            document.getElementById('uploadState').style.display = 'none';
+            document.getElementById('workspace').style.display = 'block';
+            
+            // Update progress steps
+            document.querySelectorAll('.step')[0].classList.replace('active', 'completed');
+            document.querySelectorAll('.step')[1].classList.replace('inactive', 'active');
+        }
+
+        async function generateVideo() {
+            // Update progress steps
+            document.querySelectorAll('.step')[1].classList.replace('active', 'completed');
+            document.querySelectorAll('.step')[2].classList.replace('inactive', 'active');
+            
+            // Prepare API payload
+            const outputSize = document.getElementById('outputSize').value;
+            const videos = [];
+            const youtube = [];
+            const audio = [];
+            
+            let videoIndex = 0;
+            videoClips.forEach(clip => {
+                if (clip.type === 'file') {
+                    // Handle regular video files
+                    clip.segments.forEach(segment => {
+                        videos.push({
+                            file: clip.file,
+                            options: {
+                                slowmotion: segment.options?.slowmotion || false,
+                                index: videoIndex++,
+                                mute: segment.options?.mute || false,
+                                startTime: segment.start,
+                                endTime: segment.end
+                            }
+                        });
+                    });
+                } else if (clip.type === 'youtube') {
+                    // Handle YouTube videos
+                    youtube.push({
+                        url: clip.url,
+                        quality: clip.quality || '1080p',
+                        segments: clip.segments.map((segment, segIndex) => ({
+                            index: videoIndex++,
+                            timeline: segment.timeline,
+                            options: segment.options
+                        }))
+                    });
+                }
+            });
+
+            // Handle audio files
+            audioClips.forEach((clip, index) => {
+                audio.push({
+                    file: clip.file,
+                    options: {
+                        index: index,
+                        volume: 0.8, // Default volume
+                        fadeIn: false,
+                        fadeOut: false
+                    }
+                });
+            });
+            
+            const payload = {
+                userID: getUserID(),
+                outputsize: outputSize,
+                videos: videos,
+                youtube: youtube,
+                audio: audio
+            };
+            
+            console.log('Sending API payload:', payload);
+            
+            try {
+                // Send request to backend API (adjust URL based on your setup)
+                const API_BASE = 'http://localhost:8080'; // Change this to your API URL
+                const response = await fetch(`${API_BASE}/api/generate-video`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(`🎬 Video generation started! Task ID: ${result.taskId}\nYou will be notified when processing is complete.`);
+                    
+                    // Start polling task status
+                    pollTaskStatus(result.taskId);
+                } else {
+                    const error = await response.text();
+                    alert(`❌ Error: ${error}`);
+                }
+            } catch (err) {
+                console.error('API Error:', err);
+                alert('🎬 Demo mode: Video generation started! This would normally show a progress bar and processing status.\n\nTo use the full API, make sure the Go backend is running on localhost:8080');
+            }
+        }
+
+        async function pollTaskStatus(taskId) {
+            const API_BASE = 'http://localhost:8080';
+            
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/task/${taskId}`);
+                    if (response.ok) {
+                        const task = await response.json();
+                        console.log('Task status:', task);
+                        
+                        if (task.status === 'completed') {
+                            clearInterval(pollInterval);
+                            alert(`✅ Video processing completed! \nDownload: ${window.location.origin}${task.outputFile}`);
+                        } else if (task.status === 'failed') {
+                            clearInterval(pollInterval);
+                            alert(`❌ Video processing failed: ${task.message}`);
+                        }
+                        // Update UI with progress if needed
+                        // updateProgressBar(task.progress, task.message);
+                    }
+                } catch (err) {
+                    console.error('Status polling error:', err);
+                }
+            }, 2000); // Poll every 2 seconds
+            
+            // Stop polling after 10 minutes
+                                     setTimeout(() => {
+                clearInterval(pollInterval);
+            }, 600000);
+        }
+
+        // YouTube Editor Functions
+        let currentEditingYouTubeClip = null;
+
+        function openYouTubeEditor(clip) {
+            currentEditingYouTubeClip = clip;
+            
+            // Populate the editor with clip data
+            document.getElementById('editYoutubeUrl').value = clip.url;
+            document.getElementById('editVideoQuality').value = clip.quality;
+            document.getElementById('editVideoDuration').value = clip.duration;
+            document.getElementById('youtubeEditorTitle').textContent = `YouTube Editor`;
+            
+            // Set up YouTube preview
+            const videoId = extractYouTubeId(clip.url);
+            if (videoId) {
+                document.getElementById('youtubePreviewContainer').innerHTML = `
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&controls=1" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
+                `;
+            }
+            
+            // Populate segments
+            updateYouTubeSegmentsInEditor();
+            
+            // Show the overlay
+            document.getElementById('youtubeEditorOverlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('youtubeEditorOverlay').classList.add('active');
+            }, 10);
+        }
+
+        function updateVideoDuration() {
+            if (currentEditingYouTubeClip) {
+                const newDuration = document.getElementById('editVideoDuration').value;
+                if (newDuration && newDuration.trim()) {
+                    currentEditingYouTubeClip.duration = newDuration.trim();
+                    console.log(`Duration updated to: ${newDuration}`);
+                }
+            }
+        }
+
+        function openYouTubeSegmentEditor(clip, segmentIndex) {
+            // This opens the full editor but focuses on a specific segment
+            openYouTubeEditor(clip);
+            
+            // Scroll to and highlight the specific segment
+            setTimeout(() => {
+                const segmentElement = document.querySelector(`#youtubeSegment_${segmentIndex}`);
+                if (segmentElement) {
+                    segmentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    segmentElement.style.backgroundColor = '#f0f4ff';
+                    segmentElement.style.border = '2px solid #667eea';
+                    
+                    setTimeout(() => {
+                        segmentElement.style.backgroundColor = '';
+                        segmentElement.style.border = '';
+                    }, 2000);
+                }
+            }, 300);
+        }
+
+        function closeYouTubeEditor() {
+            document.getElementById('youtubeEditorOverlay').classList.remove('active');
+            setTimeout(() => {
+                document.getElementById('youtubeEditorOverlay').style.display = 'none';
+                currentEditingYouTubeClip = null;
+            }, 300);
+        }
+
+        function updateYouTubeSegmentsInEditor() {
+            const segmentsList = document.getElementById('youtubeSegmentsList');
+            segmentsList.innerHTML = '';
+            
+            if (!currentEditingYouTubeClip.segments) {
+                currentEditingYouTubeClip.segments = [];
+            }
+            
+            currentEditingYouTubeClip.segments.forEach((segment, index) => {
+                const segmentDiv = document.createElement('div');
+                segmentDiv.className = 'segment-item';
+                segmentDiv.id = `youtubeSegment_${index}`;
+                segmentDiv.style.cssText = `
+                    background: white;
+                    border: 2px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin-bottom: 10px;
+                    transition: all 0.3s ease;
+                `;
+                
+                segmentDiv.innerHTML = `
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap;">
+                        <span style="font-weight: 600; font-size: 0.85rem; color: #374151; min-width: 70px;">Segment ${index + 1}:</span>
+                        <input type="text" style="width: 60px; padding: 4px 6px; border: 1px solid #e2e8f0; border-radius: 4px; text-align: center; font-size: 0.8rem;" 
+                               value="${segment.timeline.start}" onchange="updateYouTubeSegmentInEditor(${index}, 'start', this.value)" placeholder="0:00">
+                        <span style="font-size: 0.8rem; color: #64748b;">to</span>
+                        <input type="text" style="width: 60px; padding: 4px 6px; border: 1px solid #e2e8f0; border-radius: 4px; text-align: center; font-size: 0.8rem;" 
+                               value="${segment.timeline.end}" onchange="updateYouTubeSegmentInEditor(${index}, 'end', this.value)" placeholder="0:30">
+                        <button onclick="deleteYouTubeSegmentInEditor(${index})" style="background: #ef4444; color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; 
+font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 6px;">
+                        <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">
+                            <input type="checkbox" ${segment.options.slowmotion ? 'checked' : ''} 
+                                   onchange="updateYouTubeSegmentOptionInEditor(${index}, 'slowmotion', this.checked)" style="margin: 0;">
+                            Slow Motion
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">
+                            <input type="checkbox" ${segment.options.mute ? 'checked' : ''} 
+                                   onchange="updateYouTubeSegmentOptionInEditor(${index}, 'mute', this.checked)" style="margin: 0;">
+                            Mute
+                        </label>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #64748b;">
+                        Duration: ${calculateSegmentDuration(segment.timeline.start, segment.timeline.end)}
+                    </div>
+                `;
+                
+                segmentDiv.addEventListener('mouseenter', () => {
+                    segmentDiv.style.borderColor = '#667eea';
+                    segmentDiv.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.1)';
+                });
+                
+                segmentDiv.addEventListener('mouseleave', () => {
+                    segmentDiv.style.borderColor = '#e2e8f0';
+                    segmentDiv.style.boxShadow = 'none';
+                });
+                
+                segmentsList.appendChild(segmentDiv);
+            });
+            
+            if (currentEditingYouTubeClip.segments.length === 0) {
+                segmentsList.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #64748b; background: #f8fafc; border-radius: 8px;">
+                        <div style="font-size: 1.5rem; margin-bottom: 8px;">✂️</div>
+                        <p style="margin: 0; font-size: 0.9rem;">No segments added yet</p>
+                        <p style="font-size: 0.8rem; margin: 5px 0 0 0;">Click "Add Segment" to create your first clip</p>
+                    </div>
+                `;
+            }
+        }
+
+        function addYouTubeSegmentInEditor() {
+            if (!currentEditingYouTubeClip.segments) {
+                currentEditingYouTubeClip.segments = [];
+            }
+            
+            currentEditingYouTubeClip.segments.push({
+                index: currentEditingYouTubeClip.segments.length,
+                timeline: { start: '0:00', end: '0:30' },
+                options: { slowmotion: false, mute: false }
+            });
+            
+            updateYouTubeSegmentsInEditor();
+        }
+
+        function updateYouTubeSegmentInEditor(segmentIndex, field, value) {
+            if (currentEditingYouTubeClip.segments[segmentIndex]) {
+                currentEditingYouTubeClip.segments[segmentIndex].timeline[field] = value;
+            }
+        }
+
+        function updateYouTubeSegmentOptionInEditor(segmentIndex, option, value) {
+            if (currentEditingYouTubeClip.segments[segmentIndex]) {
+                currentEditingYouTubeClip.segments[segmentIndex].options[option] = value;
+            }
+        }
+
+        function deleteYouTubeSegmentInEditor(segmentIndex) {
+            if (currentEditingYouTubeClip.segments.length > 1) {
+                currentEditingYouTubeClip.segments.splice(segmentIndex, 1);
+                // Update indices
+                currentEditingYouTubeClip.segments.forEach((seg, i) => {
+                    seg.index = i;
+                });
+                updateYouTubeSegmentsInEditor();
+            } else {
+                alert('At least one segment is required');
+            }
+        }
+
+        function saveYouTubeChanges() {
+            // Update quality and duration if changed
+            currentEditingYouTubeClip.quality = document.getElementById('editVideoQuality').value;
+            
+            const newDuration = document.getElementById('editVideoDuration').value;
+            if (newDuration && newDuration.trim()) {
+                currentEditingYouTubeClip.duration = newDuration.trim();
+            }
+            
+            // Refresh timeline to show updated segments
+            updateTimeline();
+            
+            // Update editing controls if this clip is currently selected
+            if (selectedClip === currentEditingYouTubeClip.id) {
+                updateEditingControls(currentEditingYouTubeClip);
+            }
+            
+            closeYouTubeEditor();
+            
+            // Show success message
+            setTimeout(() => {
+                alert('✅ YouTube video segments updated successfully!');
+            }, 500);
+        }
+
+        // File clip editing functions
+        function updateFileClipTiming(clipId, field, value) {
+            const clip = videoClips.find(c => c.id === clipId);
+            if (clip && clip.segments && clip.segments[0]) {
+                clip.segments[0][field] = value;
+            } else if (clip) {
+                // Initialize segments if not exists
+                if (!clip.segments) clip.segments = [];
+                if (!clip.segments[0]) {
+                    clip.segments[0] = { 
+                        start: '0:00', 
+                        end: clip.duration,
+                        options: { slowmotion: false, mute: false }
+                    };
+                }
+                clip.segments[0][field] = value;
+            }
+            
+            // Refresh the editing controls to show updated duration
+            if (selectedClip === clipId) {
+                updateEditingControls(clip);
+            }
+        }
+
+        function updateFileClipOption(clipId, option, value) {
+            const clip = videoClips.find(c => c.id === clipId);
+            if (clip) {
+                // Initialize segments if not exists
+                if (!clip.segments) clip.segments = [];
+                if (!clip.segments[0]) {
+                    clip.segments[0] = { 
+                        start: '0:00', 
+                        end: clip.duration,
+                        options: { slowmotion: false, mute: false }
+                    };
+                }
+                if (!clip.segments[0].options) {
+                    clip.segments[0].options = { slowmotion: false, mute: false };
+                }
+                clip.segments[0].options[option] = value;
+            }
+        }
+
+        // YouTube segment editing functions
+        function updateCurrentSegmentTiming(field, value) {
+            if (window.selectedSegment) {
+                window.selectedSegment.segment.timeline[field] = value;
+                
+                // Refresh timeline and controls
+                updateTimeline();
+                updateYouTubeSegmentControls(
+                    window.selectedSegment.clip, 
+                    window.selectedSegment.segment, 
+                    window.selectedSegment.segmentIndex
+                );
+                
+                // Update preview with new timing
+                playYouTubeSegment(window.selectedSegment.clip, window.selectedSegment.segment);
+            }
+        }
+
+        function updateCurrentSegmentOption(option, value) {
+            if (window.selectedSegment) {
+                window.selectedSegment.segment.options[option] = value;
+                console.log(`Updated segment ${option}: ${value}`);
+            }
+        }
+
+        function showAudioUploadOverlay() {
+            document.getElementById('uploadOverlay').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('uploadOverlay').classList.add('active');
+            }, 10);
+            switchTab('audio');
+        }
+
+        // Drag and drop functionality
+        const uploadZone = document.getElementById('uploadState');
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+        
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+        
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            
+            const files = Array.from(e.dataTransfer.files);
+            files.forEach((file, index) => {
+                if (file.type.startsWith('video/')) {
+                    const clip = {
+                        id: Date.now() + index,
+                        type: 'file',
+                        file: file,
+                        title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+                        size: formatFileSize(file.size),
+                        duration: '0:00', // Will be updated when video loads
+                        segments: [],
+                        options: {
+                            slowmotion: false,
+                            mute: false
+                        }
+                    };
+                    videoClips.push(clip);
+                    
+                    // Get actual video duration
+                    getVideoDuration(file, clip);
+                }
+            });
+            
+            if (videoClips.length > 0) {
+                updateTimeline();
+                switchToWorkspace();
+            }
+        });
+
+        // File drop area drag and drop
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileDropArea = document.getElementById('fileDropArea');
+            
+            if (fileDropArea) {
+                fileDropArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    fileDropArea.classList.add('drag-over');
+                });
+                
+                fileDropArea.addEventListener('dragleave', () => {
+                    fileDropArea.classList.remove('drag-over');
+                });
+                
+                fileDropArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    fileDropArea.classList.remove('drag-over');
+                    
+                    const files = Array.from(e.dataTransfer.files);
+                    files.forEach((file, index) => {
+                        if (file.type.startsWith('video/')) {
+                            const clip = {
+                                id: Date.now() + index,
+                                type: 'file',
+                                file: file,
+                                title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+                                size: formatFileSize(file.size),
+                                duration: '0:00', // Will be updated when video loads
+                                segments: [],
+                                options: {
+                                    slowmotion: false,
+                                    mute: false
+                                }
+                            };
+                            videoClips.push(clip);
+                            
+                            // Get actual video duration
+                            getVideoDuration(file, clip);
+                        }
+                    });
+                    
+                    if (videoClips.length > 0) {
+                        updateTimeline();
+                        switchToWorkspace();
+                        closeOverlay();
+                                         }
+                 });
+
+                // Audio drop area drag and drop
+                const audioDropArea = document.getElementById('audioDropArea');
+                if (audioDropArea) {
+                    audioDropArea.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        audioDropArea.classList.add('drag-over');
+                    });
+                    
+                    audioDropArea.addEventListener('dragleave', () => {
+                        audioDropArea.classList.remove('drag-over');
+                    });
+                    
+                    audioDropArea.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        audioDropArea.classList.remove('drag-over');
+                        
+                        const files = Array.from(e.dataTransfer.files);
+                        files.forEach((file, index) => {
+                            if (file.type.startsWith('audio/')) {
+                                addAudioFile(file);
+                            }
+                        });
+                        
+                        if (audioClips.length > 0) {
+                            updateAudioTimeline();
+                            closeOverlay();
+                        }
+                    });
+                }
+             }
+         });
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+            
+            files.forEach((file, index) => {
+                if (file.type.startsWith('video/')) {
+                    const clip = {
+                        id: Date.now() + index,
+                        type: 'file',
+                        file: file,
+                        title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+                        size: formatFileSize(file.size),
+                        duration: '0:00', // Will be updated when video loads
+                        segments: [],
+                        options: {
+                            slowmotion: false,
+                            mute: false
+                        }
+                    };
+                    videoClips.push(clip);
+                    
+                    // Get actual video duration
+                    getVideoDuration(file, clip);
+                }
+            });
+            
+            if (videoClips.length > 0) {
+                updateTimeline();
+                switchToWorkspace();
+                closeOverlay();
+                // Reset file input
+                e.target.value = '';
+            }
+        });
+
+        // Audio input handler
+        document.getElementById('audioInput').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+            
+            files.forEach((file) => {
+                if (file.type.startsWith('audio/')) {
+                    addAudioFile(file);
+                }
+            });
+            
+            if (audioClips.length > 0) {
+                updateAudioTimeline();
+                closeOverlay();
+                // Reset file input
+                e.target.value = '';
+            }
+        });
+
+        function addAudioFile(file) {
+            const audioClip = {
+                id: Date.now() + Math.random(),
+                file: file,
+                title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+                size: formatFileSize(file.size),
+                duration: '0:00', // Will be updated when audio loads
+                type: file.type
+            };
+            audioClips.push(audioClip);
+            
+            // Get actual audio duration
+            getAudioDuration(file, audioClip);
+        }
+
+        function getAudioDuration(file, clip) {
+            const audio = document.createElement('audio');
+            audio.preload = 'metadata';
+            audio.onloadedmetadata = function() {
+                const duration = Math.floor(audio.duration);
+                const minutes = Math.floor(duration / 60);
+                const seconds = duration % 60;
+                clip.duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                updateAudioTimeline();
+                // Clean up the temporary URL
+                URL.revokeObjectURL(audio.src);
+            };
+            
+            // Create temporary blob URL for duration detection
+            const tempUrl = URL.createObjectURL(file);
+            audio.src = tempUrl;
+        }
+
+        function updateAudioTimeline() {
+            const container = document.getElementById('audioTimeline');
+            
+            if (audioClips.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; margin-bottom: 8px;">🎵</div>
+                        <div>No background audio added yet</div>
+                        <div style="font-size: 0.8rem; margin-top: 4px;">Add audio files to enhance your video</div>
+                    </div>
+                `;
+                container.style.justifyContent = 'center';
+                container.style.alignItems = 'center';
+                return;
+            }
+
+            container.innerHTML = '';
+            container.style.justifyContent = 'flex-start';
+            container.style.alignItems = 'flex-start';
+            container.style.flexWrap = 'wrap';
+            container.style.gap = '15px';
+
+            audioClips.forEach((clip, index) => {
+                const audioElement = document.createElement('div');
+                audioElement.className = 'audio-clip';
+                audioElement.style.cssText = `
+                    min-width: 200px;
+                    background: #f8fafc;
+                    border-radius: 12px;
+                    border: 2px solid #e2e8f0;
+                    padding: 15px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    position: relative;
+                `;
+                
+                audioElement.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: 
+white; font-size: 1.2rem;">
+                            🎵
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; color: #374151; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${clip.title}">
+                                ${clip.title.length > 18 ? clip.title.substring(0, 18) + '...' : clip.title}
+                            </div>
+                            <div style="font-size: 0.8rem; color: #64748b;">
+                                ${clip.duration} • ${clip.size}
+                            </div>
+                        </div>
+                        <button onclick="removeAudioClip(${index})" style="position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; width: 20px; height: 20px; border-radius: 
+50%; cursor: pointer; font-size: 0.7rem; display: flex; align-items: center; justify-content: center;">×</button>
+                    </div>
+                `;
+                
+                audioElement.addEventListener('mouseenter', () => {
+                    audioElement.style.borderColor = '#667eea';
+                    audioElement.style.transform = 'translateY(-2px)';
+                    audioElement.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.15)';
+                    audioElement.style.background = 'white';
+                });
+                
+                audioElement.addEventListener('mouseleave', () => {
+                    audioElement.style.borderColor = '#e2e8f0';
+                    audioElement.style.transform = 'translateY(0)';
+                    audioElement.style.boxShadow = 'none';
+                    audioElement.style.background = '#f8fafc';
+                });
+                
+                container.appendChild(audioElement);
+            });
+        }
+
+        function removeAudioClip(index) {
+            audioClips.splice(index, 1);
+            updateAudioTimeline();
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function getVideoDuration(file, clip) {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = function() {
+                const duration = Math.floor(video.duration);
+                const minutes = Math.floor(duration / 60);
+                const seconds = duration % 60;
+                clip.duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                clip.segments = [{ 
+                    start: '0:00', 
+                    end: clip.duration,
+                    options: { slowmotion: false, mute: false }
+                }];
+                updateTimeline();
+                if (selectedClip === clip.id) {
+                    updateSegmentsDisplay(clip);
+                }
+                // Clean up the temporary URL
+                URL.revokeObjectURL(video.src);
+            };
+            
+            // Create temporary blob URL for duration detection
+            const tempUrl = URL.createObjectURL(file);
+            video.src = tempUrl;
+        }
+        document.getElementById('uploadOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'uploadOverlay') {
+                closeOverlay();
+            }
+        });
+
+        document.getElementById('youtubeEditorOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'youtubeEditorOverlay') {
+                closeYouTubeEditor();
+            }
+        });
+          </script>
+  </body>
+  </html>
