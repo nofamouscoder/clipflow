@@ -32,6 +32,7 @@ type FileConfig struct {
 	OutputDir  string
 	UploadsDir string
 	MaxSize    int64
+	YTDLPPath  string
 }
 
 var AppConfig *Config
@@ -55,6 +56,7 @@ func LoadConfig() error {
 			OutputDir:  getEnv("OUTPUT_DIR", "./output"),
 			UploadsDir: getEnv("UPLOADS_DIR", "./uploads"),
 			MaxSize:    getEnvAsInt64("MAX_FILE_SIZE", 100*1024*1024), // 100MB default
+			YTDLPPath:  getEnv("YTDLP_PATH", "yt-dlp"),                // Default to "yt-dlp" if not specified
 		},
 	}
 

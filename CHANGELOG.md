@@ -1,5 +1,168 @@
 # Clipflow Changelog
 
+## Version 2.1.0 - Optional Authentication & Enhanced User Experience
+
+### 🚀 Major Features Added
+
+#### 1. **Optional Authentication System**
+- ✅ Zero-friction access - users can start immediately without registration
+- ✅ Automatic anonymous user creation via `/api/me` endpoint
+- ✅ Optional JWT authentication for persistent sessions
+- ✅ Frontend-friendly token management
+- ✅ Backward compatible with existing authentication
+
+#### 2. **Enhanced User Experience**
+- ✅ `/api/me` endpoint for easy user session management
+- ✅ Anonymous users can access all features
+- ✅ Seamless transition from anonymous to authenticated
+- ✅ Automatic token generation and management
+- ✅ Simplified frontend integration
+
+#### 3. **Comprehensive Testing Suite**
+- ✅ Complete API test script (`test_api.sh`)
+- ✅ Tests for all endpoints and functionality
+- ✅ Error handling validation
+- ✅ File upload testing
+- ✅ Authentication flow testing
+
+#### 4. **Improved Documentation**
+- ✅ Focused README with project overview
+- ✅ Comprehensive API documentation
+- ✅ Frontend integration guide
+- ✅ Setup and deployment instructions
+- ✅ Testing and troubleshooting guides
+
+### 🔧 Technical Improvements
+
+#### **API Enhancements**
+- ✅ Optional authentication middleware
+- ✅ Automatic user creation for anonymous access
+- ✅ Enhanced error handling and validation
+- ✅ Improved file upload processing
+- ✅ Better task management and isolation
+- ✅ Configurable YTDLP_PATH via .env file
+
+#### **Development Experience**
+- ✅ Automated setup script with dependency installation
+- ✅ Comprehensive test suite with colored output
+- ✅ Clear project structure and organization
+- ✅ Environment-based configuration
+- ✅ Production deployment guides
+
+### 📁 New Files Added
+
+```
+clipflow/
+├── test_api.sh              # Complete API test suite
+├── FRONTEND_INTEGRATION.md  # Frontend integration guide
+├── API.md                   # Comprehensive API documentation
+└── Updated README.md        # Focused project documentation
+```
+
+### 🔄 API Changes
+
+#### **New Endpoints**
+- `GET /api/me` - Get or create user session (recommended starting point)
+
+#### **Updated Behavior**
+- All endpoints now work with or without authentication
+- Anonymous users automatically created when needed
+- Simplified token management for frontend developers
+- Better error messages and validation
+
+### 🛠️ Setup & Installation
+
+#### **Automated Setup**
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+#### **Testing**
+```bash
+chmod +x test_api.sh
+./test_api.sh
+```
+
+### 🔒 Security Features
+
+#### **Flexible Authentication**
+- Optional JWT authentication
+- Automatic anonymous user creation
+- Secure token management
+- User data isolation for authenticated users
+
+#### **File Security**
+- File type and size validation
+- Secure file naming and storage
+- Upload directory isolation
+- Automatic cleanup
+
+### 🎯 Frontend Integration
+
+#### **Simple Integration**
+```javascript
+// Initialize user session
+const response = await fetch('/api/me');
+const { token, user } = await response.json();
+
+// Store token locally
+localStorage.setItem('clipflow_token', token);
+
+// Use API with or without token
+await fetch('/api/generate-video', {
+  headers: { 'Authorization': `Bearer ${token}` },
+  body: formData
+});
+```
+
+### 🚨 Breaking Changes
+
+None - this version is fully backward compatible with v2.0.0
+
+### 🔄 Migration Guide
+
+#### **From Version 2.0.0**
+- No migration required
+- All existing functionality preserved
+- New optional features available
+
+#### **For Frontend Developers**
+- Use `/api/me` as the starting point
+- Store JWT tokens locally for persistent sessions
+- Authentication is now optional but recommended
+
+### 🎯 Next Steps
+
+#### **Immediate Improvements**
+- [ ] Add rate limiting
+- [ ] Implement file compression
+- [ ] Add video preview generation
+- [ ] Implement task queuing system
+
+#### **Future Features**
+- [ ] Gmail login integration
+- [ ] Real-time progress updates (WebSocket)
+- [ ] Video thumbnail generation
+- [ ] Advanced video effects
+- [ ] Cloud storage integration
+
+### 🐛 Bug Fixes
+
+- Fixed authentication enforcement issues
+- Improved error handling for file uploads
+- Enhanced user session management
+- Better token validation and renewal
+
+### 📈 Performance Improvements
+
+- Optimized user creation process
+- Improved file handling efficiency
+- Better database query performance
+- Reduced memory usage
+
+---
+
 ## Version 2.0.0 - Complete Rewrite with Authentication & File Uploads
 
 ### 🚀 Major Features Added
@@ -102,7 +265,7 @@ clipflow/
 
 #### **Updated Endpoints**
 - `POST /api/generate-video` - Now supports multipart form data with file uploads
-- `GET /api/tasks` - Now returns user's own tasks (no longer requires user ID parameter)
+- `GET /api/tasks` - Now requires userID parameter to filter tasks by user
 - `GET /api/task/:taskId` - Now requires authentication and ownership verification
 
 #### **Authentication Required**

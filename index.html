@@ -726,6 +726,40 @@
             background: #dc2626;
         }
 
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #10b981;
+        }
+
+        .notification.error {
+            background: #ef4444;
+        }
+
+        .notification.info {
+            background: #667eea;
+        }
+
+        .notification.warning {
+            background: #f59e0b;
+        }
+
         @media (max-width: 768px) {
             .workspace-content {
                 min-height: auto;
@@ -777,6 +811,11 @@
         <div class="header">
             <h1>Clipflow</h1>
             <p>Merge videos and YouTube clips with professional editing tools</p>
+            <div style="margin-top: 20px;">
+                <a href="/history" style="color: white; text-decoration: none; padding: 8px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; transition: all 0.3s ease;">
+                    📋 View History
+                </a>
+            </div>
         </div>
 
         <div class="main-content">
@@ -1125,10 +1164,114 @@ onchange="updateVideoDuration()">
         // Initialize playback speed
         window.currentPlaybackSpeed = 1.0;
 
+        // Show notification function
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+
+            // Hide and remove notification
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
         // Initialize editing controls
         document.addEventListener('DOMContentLoaded', function() {
             updateEditingControls(null);
         });
+
+        // File upload function with validation
+        async function uploadFile(file, type = 'video') {
+            // Validate type and size before upload
+            const isVideo = file.type.startsWith('video/');
+            const isAudio = file.type.startsWith('audio/');
+            const maxVideoSize = 100 * 1024 * 1024; // 100MB
+            const maxAudioSize = 20 * 1024 * 1024;  // 20MB
+
+            if (!isVideo && !isAudio) {
+                showNotification('Unsupported file type!', 'error');
+                return null;
+            }
+            if (isVideo && file.size > maxVideoSize) {
+                showNotification('Video file too large (max 100MB)', 'error');
+                return null;
+            }
+            if (isAudio && file.size > maxAudioSize) {
+                showNotification('Audio file too large (max 20MB)', 'error');
+                return null;
+            }
+
+            // Show upload progress
+            const progressDiv = document.createElement('div');
+            progressDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #667eea;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            `;
+            progressDiv.innerHTML = `📤 Uploading ${file.name}...`;
+            document.body.appendChild(progressDiv);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || response.statusText);
+                }
+
+                const data = await response.json();
+                
+                // Update progress
+                progressDiv.innerHTML = `✅ ${file.name} uploaded successfully!`;
+                progressDiv.style.background = '#10b981';
+                
+                // Remove progress indicator after 2 seconds
+                setTimeout(() => {
+                    if (progressDiv.parentNode) {
+                        progressDiv.parentNode.removeChild(progressDiv);
+                    }
+                }, 2000);
+
+                return data.url; // e.g., /uploads/filename.mp4
+            } catch (error) {
+                // Update progress with error
+                progressDiv.innerHTML = `❌ Upload failed: ${error.message}`;
+                progressDiv.style.background = '#ef4444';
+                
+                // Remove progress indicator after 3 seconds
+                setTimeout(() => {
+                    if (progressDiv.parentNode) {
+                        progressDiv.parentNode.removeChild(progressDiv);
+                    }
+                }, 3000);
+                
+                return null;
+            }
+        }
 
         function showUploadOverlay() {
             document.getElementById('uploadOverlay').style.display = 'block';
@@ -1856,10 +1999,15 @@ onchange="updateVideoDuration()">
             let videoIndex = 0;
             videoClips.forEach(clip => {
                 if (clip.type === 'file') {
-                    // Handle regular video files
+                    // Handle regular video files - use uploaded URLs
+                    if (!clip.uploadedUrl) {
+                        showNotification(`Video "${clip.title}" was not uploaded successfully. Please try uploading it again.`, 'error');
+                        return;
+                    }
+                    
                     clip.segments.forEach(segment => {
                         videos.push({
-                            file: clip.file,
+                            file: clip.uploadedUrl, // Use the uploaded URL instead of file blob
                             options: {
                                 slowmotion: segment.options?.slowmotion || false,
                                 index: videoIndex++,
@@ -1883,10 +2031,15 @@ onchange="updateVideoDuration()">
                 }
             });
 
-            // Handle audio files
+            // Handle audio files - use uploaded URLs
             audioClips.forEach((clip, index) => {
+                if (!clip.uploadedUrl) {
+                    showNotification(`Audio "${clip.title}" was not uploaded successfully. Please try uploading it again.`, 'error');
+                    return;
+                }
+                
                 audio.push({
-                    file: clip.file,
+                    file: clip.uploadedUrl, // Use the uploaded URL instead of file blob
                     options: {
                         index: index,
                         volume: 0.8, // Default volume
@@ -1919,17 +2072,17 @@ onchange="updateVideoDuration()">
                 
                 if (response.ok) {
                     const result = await response.json();
-                    alert(`🎬 Video generation started! Task ID: ${result.taskId}\nYou will be notified when processing is complete.`);
+                    showNotification(`Video generation started! Task ID: ${result.taskId}`, 'success');
                     
                     // Start polling task status
                     pollTaskStatus(result.taskId);
                 } else {
                     const error = await response.text();
-                    alert(`❌ Error: ${error}`);
+                    showNotification(`Error: ${error}`, 'error');
                 }
             } catch (err) {
                 console.error('API Error:', err);
-                alert('🎬 Demo mode: Video generation started! This would normally show a progress bar and processing status.\n\nTo use the full API, make sure the Go backend is running on localhost:8080');
+                showNotification('Demo mode: Video generation started! Make sure the Go backend is running on localhost:8080', 'warning');
             }
         }
 
@@ -1945,10 +2098,10 @@ onchange="updateVideoDuration()">
                         
                         if (task.status === 'completed') {
                             clearInterval(pollInterval);
-                            alert(`✅ Video processing completed! \nDownload: ${window.location.origin}${task.outputFile}`);
+                            showNotification(`Video processing completed! Download available.`, 'success');
                         } else if (task.status === 'failed') {
                             clearInterval(pollInterval);
-                            alert(`❌ Video processing failed: ${task.message}`);
+                            showNotification(`Video processing failed: ${task.message}`, 'error');
                         }
                         // Update UI with progress if needed
                         // updateProgressBar(task.progress, task.message);
@@ -2147,7 +2300,7 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
                 });
                 updateYouTubeSegmentsInEditor();
             } else {
-                alert('At least one segment is required');
+                showNotification('At least one segment is required', 'warning');
             }
         }
 
@@ -2172,7 +2325,7 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
             
             // Show success message
             setTimeout(() => {
-                alert('✅ YouTube video segments updated successfully!');
+                showNotification('YouTube video segments updated successfully!', 'success');
             }, 500);
         }
 
@@ -2264,17 +2417,25 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
             uploadZone.classList.remove('drag-over');
         });
         
-        uploadZone.addEventListener('drop', (e) => {
+        uploadZone.addEventListener('drop', async (e) => {
             e.preventDefault();
             uploadZone.classList.remove('drag-over');
             
             const files = Array.from(e.dataTransfer.files);
-            files.forEach((file, index) => {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
                 if (file.type.startsWith('video/')) {
+                    // Upload file first
+                    const uploadedUrl = await uploadFile(file, 'video');
+                    if (!uploadedUrl) {
+                        continue; // Skip this file if upload failed
+                    }
+                    
                     const clip = {
-                        id: Date.now() + index,
+                        id: Date.now() + i,
                         type: 'file',
-                        file: file,
+                        file: file, // Keep original file for preview
+                        uploadedUrl: uploadedUrl, // Store the uploaded URL
                         title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
                         size: formatFileSize(file.size),
                         duration: '0:00', // Will be updated when video loads
@@ -2289,7 +2450,7 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
                     // Get actual video duration
                     getVideoDuration(file, clip);
                 }
-            });
+            }
             
             if (videoClips.length > 0) {
                 updateTimeline();
@@ -2311,17 +2472,25 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
                     fileDropArea.classList.remove('drag-over');
                 });
                 
-                fileDropArea.addEventListener('drop', (e) => {
+                                fileDropArea.addEventListener('drop', async (e) => {
                     e.preventDefault();
                     fileDropArea.classList.remove('drag-over');
                     
                     const files = Array.from(e.dataTransfer.files);
-                    files.forEach((file, index) => {
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
                         if (file.type.startsWith('video/')) {
+                            // Upload file first
+                            const uploadedUrl = await uploadFile(file, 'video');
+                            if (!uploadedUrl) {
+                                continue; // Skip this file if upload failed
+                            }
+                            
                             const clip = {
-                                id: Date.now() + index,
+                                id: Date.now() + i,
                                 type: 'file',
-                                file: file,
+                                file: file, // Keep original file for preview
+                                uploadedUrl: uploadedUrl, // Store the uploaded URL
                                 title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
                                 size: formatFileSize(file.size),
                                 duration: '0:00', // Will be updated when video loads
@@ -2336,13 +2505,13 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
                             // Get actual video duration
                             getVideoDuration(file, clip);
                         }
-                    });
+                    }
                     
                     if (videoClips.length > 0) {
                         updateTimeline();
                         switchToWorkspace();
                         closeOverlay();
-                                         }
+                    }
                  });
 
                 // Audio drop area drag and drop
@@ -2357,16 +2526,23 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
                         audioDropArea.classList.remove('drag-over');
                     });
                     
-                    audioDropArea.addEventListener('drop', (e) => {
+                    audioDropArea.addEventListener('drop', async (e) => {
                         e.preventDefault();
                         audioDropArea.classList.remove('drag-over');
                         
                         const files = Array.from(e.dataTransfer.files);
-                        files.forEach((file, index) => {
+                        for (let i = 0; i < files.length; i++) {
+                            const file = files[i];
                             if (file.type.startsWith('audio/')) {
-                                addAudioFile(file);
+                                // Upload file first
+                                const uploadedUrl = await uploadFile(file, 'audio');
+                                if (!uploadedUrl) {
+                                    continue; // Skip this file if upload failed
+                                }
+                                
+                                addAudioFile(file, uploadedUrl);
                             }
-                        });
+                        }
                         
                         if (audioClips.length > 0) {
                             updateAudioTimeline();
@@ -2378,16 +2554,24 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
          });
 
         // File input handler
-        document.getElementById('fileInput').addEventListener('change', function(e) {
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
             
-            files.forEach((file, index) => {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
                 if (file.type.startsWith('video/')) {
+                    // Upload file first
+                    const uploadedUrl = await uploadFile(file, 'video');
+                    if (!uploadedUrl) {
+                        continue; // Skip this file if upload failed
+                    }
+                    
                     const clip = {
-                        id: Date.now() + index,
+                        id: Date.now() + i,
                         type: 'file',
-                        file: file,
+                        file: file, // Keep original file for preview
+                        uploadedUrl: uploadedUrl, // Store the uploaded URL
                         title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
                         size: formatFileSize(file.size),
                         duration: '0:00', // Will be updated when video loads
@@ -2402,7 +2586,7 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
                     // Get actual video duration
                     getVideoDuration(file, clip);
                 }
-            });
+            }
             
             if (videoClips.length > 0) {
                 updateTimeline();
@@ -2414,15 +2598,22 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
         });
 
         // Audio input handler
-        document.getElementById('audioInput').addEventListener('change', function(e) {
+        document.getElementById('audioInput').addEventListener('change', async function(e) {
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
             
-            files.forEach((file) => {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
                 if (file.type.startsWith('audio/')) {
-                    addAudioFile(file);
+                    // Upload file first
+                    const uploadedUrl = await uploadFile(file, 'audio');
+                    if (!uploadedUrl) {
+                        continue; // Skip this file if upload failed
+                    }
+                    
+                    addAudioFile(file, uploadedUrl);
                 }
-            });
+            }
             
             if (audioClips.length > 0) {
                 updateAudioTimeline();
@@ -2432,10 +2623,11 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
             }
         });
 
-        function addAudioFile(file) {
+        function addAudioFile(file, uploadedUrl) {
             const audioClip = {
                 id: Date.now() + Math.random(),
-                file: file,
+                file: file, // Keep original file for preview
+                uploadedUrl: uploadedUrl, // Store the uploaded URL
                 title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
                 size: formatFileSize(file.size),
                 duration: '0:00', // Will be updated when audio loads

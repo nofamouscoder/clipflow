@@ -1,247 +1,186 @@
 # Clipflow
 
-A comprehensive Go-based API for professional video editing, merging, and processing with support for YouTube clips, local videos, and audio tracks.
+A powerful video processing tool that combines local video files and/or YouTube clips to create professional video content. Built with Go, featuring a web interface, automatic user management, and real-time video processing.
 
 ## 🚀 Features
 
-### Core Video Processing
-- **YouTube Integration**: Download and process specific segments from YouTube videos with precise timing
-- **Local Video Support**: Process uploaded videos with trimming, effects, and format conversion
-- **Audio Track Support**: Support for multiple audio formats with volume control, fade effects
-- **Multi-format Output**: Generate videos in various aspect ratios optimized for different platforms
-- **Real-time Progress Tracking**: Task-based async processing with detailed progress updates
+### Video Processing
+- **Local Video Upload**: Support for multiple video formats (MP4, AVI, MOV, WMV, FLV, WebM)
+- **YouTube Integration**: Download and process specific segments from YouTube videos
+- **Audio Support**: Upload and merge audio tracks (MP3, WAV, AAC, OGG, FLAC)
+- **Video Effects**: Apply slow motion, mute, and other effects
+- **Multiple Output Formats**: 16:9, 9:16, 1:1, 4:3, 3:4 aspect ratios
 
-### Advanced Editing Capabilities
-- **Segment-based Editing**: Process multiple YouTube segments from the same video independently
-- **Video Effects**: Slow motion, mute, volume adjustment, fade in/out
-- **Smart Scaling**: Automatic video scaling and padding to maintain quality across aspect ratios
-- **Batch Processing**: Handle multiple videos and audio tracks in a single merge operation
-- **User Management**: Isolated processing and file management per user
+### User Experience
+- **Web Interface**: Modern, responsive web UI for easy video processing
+- **Zero-Friction Access**: Start using immediately without registration
+- **Automatic User Creation**: Anonymous users created automatically
+- **Optional Authentication**: Register for persistent sessions
+- **Real-time Progress**: Track video processing status in real-time
+- **File Management**: Automatic cleanup and secure storage
 
-## 📋 Prerequisites
+### Technical Features
+- **RESTful API**: Clean, well-documented endpoints for integration
+- **Database Persistence**: SQLite for user and task management
+- **File Validation**: Type and size validation for uploads
+- **Error Handling**: Comprehensive error reporting
+- **CORS Support**: Frontend integration ready
 
-### Required Software
-- **Go 1.21 or higher** - [Download Go](https://golang.org/dl/)
-- **FFmpeg** - Required for video processing
-- **yt-dlp** - Required for YouTube video downloads
-- **Node.js 18+** - For running the full application stack
+## 🛠️ Prerequisites
 
-### Installation Instructions
+- **Go 1.20+** - [Download Go](https://golang.org/dl/)
+- **FFmpeg** - Video processing engine
+- **yt-dlp** - YouTube video downloader
+- **SQLite3** - Database (included in most systems)
 
-#### macOS
+## ⚡ Quick Start
+
+### Automated Setup
 ```bash
-# Install using Homebrew
-brew install go ffmpeg yt-dlp node
-
-# Verify installations
-go version
-ffmpeg -version
-yt-dlp --version
-node --version
-```
-
-#### Ubuntu/Debian
-```bash
-# Update package list
-sudo apt update
-
-# Install Go
-sudo apt install golang-go
-
-# Install FFmpeg and yt-dlp
-sudo apt install ffmpeg python3-pip
-pip3 install yt-dlp
-
-# Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Verify installations
-go version
-ffmpeg -version
-yt-dlp --version
-node --version
-```
-
-#### Windows
-```bash
-# Install Go from https://golang.org/dl/
-# Install FFmpeg from https://ffmpeg.org/download.html
-# Install yt-dlp
-pip install yt-dlp
-
-# Install Node.js from https://nodejs.org/
-```
-
-## 🛠️ Installation & Setup
-
-### 1. Clone and Setup Backend
-```bash
+# Clone the repository
 git clone <repository-url>
-cd backend
+cd clipflow
 
-# Install Go dependencies
-go mod download
+# Run automated setup
+chmod +x setup.sh
+./setup.sh
 
-# Create required directories
-mkdir -p temp output uploads
-
-# Set up environment (optional)
-cp .env.example .env  # if available
-```
-
-### 2. Frontend Setup (Optional)
-```bash
-cd ../frontend
-npm install
-npm run build  # for production
-```
-
-### 3. Database Setup (Optional)
-```bash
-cd ../backend
-
-# Install Node.js dependencies for database
-npm install
-
-# Run database migrations
-npx sequelize-cli db:migrate
-
-# Seed initial data
-npx sequelize-cli db:seed:all
-```
-
-## 🚀 Running the Application
-
-### Development Mode
-```bash
-# Start the Go API server
+# Start the server
 go run main.go
-
-# In another terminal, start frontend (optional)
-cd ../frontend
-npm run dev
 ```
 
-### Production Mode
+### Manual Setup
 ```bash
-# Build the Go binary
-go build -o clipflow main.go
+# Install dependencies
+go mod tidy
 
-# Run the binary
-./clipflow
+# Create directories
+mkdir -p temp output uploads database logs
 
-# The API will start on http://localhost:8080
+# Start the server
+go run main.go
 ```
 
 ### Verify Installation
 ```bash
-# Test API health
-curl http://localhost:8080/api/tasks/test-user
-
-# Expected response: []
+# Test the API
+chmod +x test_api.sh
+./test_api.sh
 ```
 
-### Video Input Formats
-- **Primary**: MP4, MOV, AVI
-- **Additional**: WMV, FLV, MKV, WEBM
-- **Max File Size**: 500MB per file
-- **Resolution**: Up to 4K (3840x2160)
+## 🌐 Using Clipflow
 
-### Audio Input Formats
-- **Primary**: MP3, WAV, AAC
-- **Additional**: M4A, OGG, FLAC
-- **Max File Size**: 100MB per file
-- **Bitrate**: Up to 320kbps
+### Web Interface
+1. **Start the server**: `go run main.go`
+2. **Open browser**: Navigate to http://localhost:8080
+3. **Upload videos**: Drag and drop video files or select from your computer
+4. **Add YouTube clips**: Paste YouTube URLs and select segments
+5. **Configure settings**: Choose output format and effects
+6. **Process videos**: Click generate and watch real-time progress
+7. **Download results**: Get your processed video when complete
 
-### YouTube Quality Options
-- `2160p` - 4K (if available)
-- `1440p` - 2K (if available)
-- `1080p` - Full HD (recommended)
-- `720p` - HD
-- `480p` - Standard definition
-- `360p` - Low quality (faster processing)
-
-### Playback Speed Options
-- `0.1x` - Extreme slow motion
-- `0.25x` - Quarter speed
-- `0.5x` - Half speed
-- `1.0x` - Normal speed (default)
-- `2.0x` - Double speed
-
-## 📊 Task Status Lifecycle
-
-1. **pending** - Task created, queued for processing
-2. **processing** - Active video processing with progress updates
-3. **completed** - Successfully processed, file ready for download
-4. **failed** - Processing failed, error details available
-
-### Progress Tracking
-Progress is reported as percentage (0-100) with detailed messages:
-- 0-20%: Downloading YouTube videos
-- 20-40%: Processing video effects
-- 40-60%: Processing audio tracks
-- 60-80%: Merging videos and audio
-- 80-100%: Finalizing output and cleanup
+### API Integration
+For developers who want to integrate Clipflow into their applications:
+- See [API.md](API.md) for complete API documentation
+- See [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) for integration examples
 
 ## 🔧 Configuration
 
-### Environment Variables
-Create a `.env` file in the backend directory:
+Create a `.env` file for custom configuration:
 
 ```env
-# Server Configuration
 PORT=8080
 HOST=localhost
-
-# Directories
-WORK_DIR=./temp
-OUTPUT_DIR=./output
-UPLOAD_DIR=./uploads
-
-# Processing Options
-MAX_FILE_SIZE=500MB
-MAX_AUDIO_SIZE=100MB
-CLEANUP_INTERVAL=3600  # seconds
-
-# YouTube Processing
-YOUTUBE_QUALITY=1080p
-MAX_DOWNLOAD_RETRIES=3
-
-# Database (if using Node.js components)
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=storicut
-DB_USER=postgres
-DB_PASS=password
+JWT_SECRET=your-secret-key
+DB_PATH=./database/clipflow.db
+MAX_FILE_SIZE=104857600
+# Path to yt-dlp executable (default: yt-dlp)
+YTDLP_PATH=yt-dlp
 ```
 
-### Docker Setup (Optional)
-```dockerfile
-# Dockerfile example
-FROM golang:1.21-alpine AS builder
-WORKDIR /app
-COPY go.* ./
-RUN go mod download
-COPY . .
-RUN go build -o clipflow main.go
+## 🧪 Testing
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates ffmpeg python3 py3-pip
-RUN pip3 install yt-dlp
-WORKDIR /root/
-COPY --from=builder /app/clipflow .
-EXPOSE 8080
-CMD ["./clipflow"]
+```bash
+# Run API tests
+./test_api.sh
+
+# Test web interface
+open http://localhost:8080
+
+# Test specific functionality
+curl http://localhost:8080/api/me
 ```
 
-### Contributing
+## 🔒 Security
+
+- JWT-based authentication
+- File type and size validation
+- Input sanitization
+- User data isolation
+- Secure file handling
+
+## 📊 Database
+
+SQLite database with automatic schema creation:
+- User management
+- Task tracking
+- Progress monitoring
+- File associations
+
+## 🚨 Production Deployment
+
+1. **Update Configuration**
+   ```bash
+   # Change default secrets
+   JWT_SECRET=your-production-secret
+   GIN_MODE=release
+   ```
+
+2. **Build Binary**
+   ```bash
+   go build -o clipflow main.go
+   ```
+
+3. **Setup Reverse Proxy**
+   ```nginx
+   # Nginx configuration
+   server {
+       listen 80;
+       server_name your-domain.com;
+       
+       location / {
+           proxy_pass http://localhost:8080;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+       }
+   }
+   ```
+
+4. **Systemd Service**
+   ```bash
+   sudo systemctl enable clipflow
+   sudo systemctl start clipflow
+   ```
+
+## 🤝 Contributing
+
 1. Fork the repository
 2. Create a feature branch
-3. Add tests for new functionality
-4. Update documentation
+3. Make your changes
+4. Add tests
 5. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🆘 Support
+
+- **Issues**: Create an issue on GitHub
+- **Documentation**: Check API.md and FRONTEND_INTEGRATION.md
+- **Testing**: Run test_api.sh for troubleshooting
+- **Web Interface**: Open http://localhost:8080 for the main tool
 
 ---
 
-**Clipflow Backend API** - Professional video editing and merging platform 
+**Clipflow** - Professional video processing made simple.

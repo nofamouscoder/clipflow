@@ -7,17 +7,65 @@ http://localhost:8080/api
 
 ## Authentication
 
-All protected endpoints require a JWT token in the Authorization header:
+The API uses optional JWT authentication. Users can:
+
+1. **Anonymous Access**: Use the API without authentication - the system will automatically create anonymous users
+2. **Authenticated Access**: Include a JWT token in the Authorization header for persistent user sessions
+
+**For authenticated requests:**
 ```
 Authorization: Bearer <your-jwt-token>
 ```
+
+**Getting Started:**
+1. Call `GET /api/me` to get or create a user session
+2. Store the returned token locally
+3. Include the token in subsequent requests
 
 ## Endpoints
 
 ### Public Endpoints
 
+#### GET /api/me
+Get or create a user session. This is the recommended starting point for all applications.
+
+**Headers:** (Optional)
+```
+Authorization: Bearer <existing-jwt-token>
+```
+
+**Response (New User):**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "user-id",
+    "email": "anonymous_abc12345@clipflow.local",
+    "username": "Anonymous_abc12345",
+    "created_at": "2023-12-01T10:00:00Z",
+    "updated_at": "2023-12-01T10:00:00Z"
+  },
+  "new": true
+}
+```
+
+**Response (Existing User):**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "user-id",
+    "email": "user@example.com",
+    "username": "username",
+    "created_at": "2023-12-01T10:00:00Z",
+    "updated_at": "2023-12-01T10:00:00Z"
+  },
+  "new": false
+}
+```
+
 #### POST /api/register
-Register a new user account.
+Register a new user account with email and password.
 
 **Request Body:**
 ```json
@@ -67,10 +115,15 @@ Login with existing credentials.
 }
 ```
 
-### Protected Endpoints
+### API Endpoints
 
 #### POST /api/generate-video
 Create a new video processing task with file uploads.
+
+**Headers:** (Optional)
+```
+Authorization: Bearer <jwt-token>
+```
 
 **Content-Type:** `multipart/form-data`
 
@@ -134,6 +187,11 @@ Create a new video processing task with file uploads.
 #### GET /api/task/:taskId
 Get the status of a specific task.
 
+**Headers:** (Optional)
+```
+Authorization: Bearer <jwt-token>
+```
+
 **Response:**
 ```json
 {
@@ -149,7 +207,15 @@ Get the status of a specific task.
 ```
 
 #### GET /api/tasks
-Get all tasks for the authenticated user.
+Get all tasks for a specific user. Requires userID parameter.
+
+**Query Parameters:**
+- `userID` (required) - The user ID to filter tasks by
+
+**Headers:** (Optional)
+```
+Authorization: Bearer <jwt-token>
+```
 
 **Response:**
 ```json
@@ -177,6 +243,11 @@ Get all tasks for the authenticated user.
 
 #### DELETE /api/task/:taskId
 Delete a specific task.
+
+**Headers:** (Optional)
+```
+Authorization: Bearer <jwt-token>
+```
 
 **Response:**
 ```json
@@ -265,7 +336,38 @@ YYYYMMDD_HHMMSS_XXXXXXXX.ext
 
 ## Example Usage
 
-### 1. Register a new user
+### 1. Get or create user session (Recommended starting point)
+```bash
+curl -X GET http://localhost:8080/api/me
+```
+
+### 2. Create video task with file upload (Anonymous)
+```bash
+curl -X POST http://localhost:8080/api/generate-video \
+  -F "data={\"outputsize\":\"16:9\",\"videos\":[{\"file\":\"video_0\",\"options\":{\"slowmotion\":false,\"mute\":false}}]}" \
+  -F "video_0=@/path/to/your/video.mp4"
+```
+
+### 3. Create video task with file upload (Authenticated)
+```bash
+curl -X POST http://localhost:8080/api/generate-video \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -F "data={\"outputsize\":\"16:9\",\"videos\":[{\"file\":\"video_0\",\"options\":{\"slowmotion\":false,\"mute\":false}}]}" \
+  -F "video_0=@/path/to/your/video.mp4"
+```
+
+### 4. Check task status
+```bash
+curl -X GET http://localhost:8080/api/task/TASK_ID
+```
+
+### 5. Get all user tasks
+```bash
+curl -X GET "http://localhost:8080/api/tasks?userID=YOUR_USER_ID" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### 6. Register a new user (Optional)
 ```bash
 curl -X POST http://localhost:8080/api/register \
   -H "Content-Type: application/json" \
@@ -276,7 +378,7 @@ curl -X POST http://localhost:8080/api/register \
   }'
 ```
 
-### 2. Login
+### 7. Login (Optional)
 ```bash
 curl -X POST http://localhost:8080/api/login \
   -H "Content-Type: application/json" \
@@ -286,33 +388,14 @@ curl -X POST http://localhost:8080/api/login \
   }'
 ```
 
-### 3. Create video task with file upload
-```bash
-curl -X POST http://localhost:8080/api/generate-video \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -F "data={\"outputsize\":\"16:9\",\"videos\":[{\"file\":\"video_0\",\"options\":{\"slowmotion\":false,\"mute\":false}}]}" \
-  -F "video_0=@/path/to/your/video.mp4"
-```
-
-### 4. Check task status
-```bash
-curl -X GET http://localhost:8080/api/task/TASK_ID \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
-### 5. Get all user tasks
-```bash
-curl -X GET http://localhost:8080/api/tasks \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
-
 ## Security Notes
 
 1. **JWT Tokens**: Tokens expire after 24 hours
 2. **File Validation**: All uploaded files are validated for type and size
-3. **User Isolation**: Users can only access their own tasks
-4. **Input Sanitization**: All inputs are validated and sanitized
-5. **CORS**: Configured for development (allows all origins)
+3. **User Isolation**: Authenticated users can only access their own tasks
+4. **Anonymous Users**: Anonymous users can access any task (for simplicity)
+5. **Input Sanitization**: All inputs are validated and sanitized
+6. **CORS**: Configured for development (allows all origins)
 
 ## Rate Limiting
 
@@ -322,7 +405,23 @@ Currently, no rate limiting is implemented. Consider implementing rate limiting 
 
 The application uses SQLite by default. The database file is located at `./database/clipflow.db`.
 
-## Environment Variables
+## Setup & Testing
+
+### Quick Setup
+```bash
+# Automated setup
+chmod +x setup.sh
+./setup.sh
+
+# Start server
+go run main.go
+
+# Test API
+chmod +x test_api.sh
+./test_api.sh
+```
+
+### Environment Variables
 
 Create a `.env` file with the following variables:
 
@@ -337,4 +436,16 @@ TEMP_DIR=./temp
 OUTPUT_DIR=./output
 UPLOADS_DIR=./uploads
 MAX_FILE_SIZE=104857600
+```
+
+### Testing
+```bash
+# Run all tests
+./test_api.sh
+
+# Test specific endpoint
+curl http://localhost:8080/api/me
+
+# Test with authentication
+curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:8080/api/tasks
 ``` 
