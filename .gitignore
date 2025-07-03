@@ -9,3 +9,5 @@ output/
 database/
 .DS_Store
 static/_next/
+*.db
+*/*.db

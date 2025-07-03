@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -23,6 +24,7 @@ type Task struct {
 	Progress    int        `json:"progress"`
 	Message     string     `json:"message"`
 	OutputFile  string     `json:"output_file,omitempty"`
+	TaskDetails string     `json:"task_details,omitempty"` // JSON string containing input videos, options, etc.
 	CreatedAt   time.Time  `json:"created_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 }
@@ -75,12 +77,16 @@ func createTables(db *sql.DB) error {
 			progress INTEGER DEFAULT 0,
 			message TEXT,
 			output_file TEXT,
+			task_details TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			completed_at DATETIME,
 			FOREIGN KEY (user_id) REFERENCES users(id)
 		)
 	`)
-	if err != nil {
+
+	// Add task_details column if it doesn't exist (for existing databases)
+	_, err = db.Exec(`ALTER TABLE tasks ADD COLUMN task_details TEXT`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 		return err
 	}
 
@@ -147,18 +153,18 @@ func (d *Database) UpdateUser(user *User) error {
 // Task methods
 func (d *Database) CreateTask(task *Task) error {
 	_, err := d.db.Exec(`
-		INSERT INTO tasks (id, user_id, status, progress, message, output_file, created_at, completed_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, task.ID, task.UserID, task.Status, task.Progress, task.Message, task.OutputFile, task.CreatedAt, task.CompletedAt)
+		INSERT INTO tasks (id, user_id, status, progress, message, output_file, task_details, created_at, completed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, task.ID, task.UserID, task.Status, task.Progress, task.Message, task.OutputFile, task.TaskDetails, task.CreatedAt, task.CompletedAt)
 	return err
 }
 
 func (d *Database) GetTaskByID(id string) (*Task, error) {
 	task := &Task{}
 	err := d.db.QueryRow(`
-		SELECT id, user_id, status, progress, message, output_file, created_at, completed_at
+		SELECT id, user_id, status, progress, message, output_file, task_details, created_at, completed_at
 		FROM tasks WHERE id = ?
-	`, id).Scan(&task.ID, &task.UserID, &task.Status, &task.Progress, &task.Message, &task.OutputFile, &task.CreatedAt, &task.CompletedAt)
+	`, id).Scan(&task.ID, &task.UserID, &task.Status, &task.Progress, &task.Message, &task.OutputFile, &task.TaskDetails, &task.CreatedAt, &task.CompletedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +173,7 @@ func (d *Database) GetTaskByID(id string) (*Task, error) {
 
 func (d *Database) GetTasksByUserID(userID string) ([]*Task, error) {
 	rows, err := d.db.Query(`
-		SELECT id, user_id, status, progress, message, output_file, created_at, completed_at
+		SELECT id, user_id, status, progress, message, output_file, task_details, created_at, completed_at
 		FROM tasks WHERE user_id = ? ORDER BY created_at DESC
 	`, userID)
 	if err != nil {
@@ -178,20 +184,23 @@ func (d *Database) GetTasksByUserID(userID string) ([]*Task, error) {
 	var tasks []*Task
 	for rows.Next() {
 		task := &Task{}
-		err := rows.Scan(&task.ID, &task.UserID, &task.Status, &task.Progress, &task.Message, &task.OutputFile, &task.CreatedAt, &task.CompletedAt)
+		err := rows.Scan(&task.ID, &task.UserID, &task.Status, &task.Progress, &task.Message, &task.OutputFile, &task.TaskDetails, &task.CreatedAt, &task.CompletedAt)
 		if err != nil {
 			return nil, err
 		}
 		tasks = append(tasks, task)
+	}
+	if tasks == nil {
+		tasks = make([]*Task, 0)
 	}
 	return tasks, nil
 }
 
 func (d *Database) UpdateTask(task *Task) error {
 	_, err := d.db.Exec(`
-		UPDATE tasks SET status = ?, progress = ?, message = ?, output_file = ?, completed_at = ?
+		UPDATE tasks SET status = ?, progress = ?, message = ?, output_file = ?, task_details = ?, completed_at = ?
 		WHERE id = ?
-	`, task.Status, task.Progress, task.Message, task.OutputFile, task.CompletedAt, task.ID)
+	`, task.Status, task.Progress, task.Message, task.OutputFile, task.TaskDetails, task.CompletedAt, task.ID)
 	return err
 }
 

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipflow Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-info { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Clipflow Debug Page</h1>
+    
+    <div class="debug-info">
+        <h3>Current Session Info:</h3>
+        <div id="sessionInfo">Loading...</div>
+    </div>
+    
+    <div class="debug-info">
+        <h3>Tasks:</h3>
+        <div id="tasksInfo">Loading...</div>
+    </div>
+    
+    <button onclick="testSession()">Test Session</button>
+    <button onclick="loadTasks()">Load Tasks</button>
+    <button onclick="clearSession()">Clear Session</button>
+    
+    <script>
+        // User/session management
+        async function ensureUserSession() {
+            let userID = localStorage.getItem('clipflow_user_id');
+            let token = localStorage.getItem('clipflow_token');
+            console.log('Current localStorage userID:', userID);
+            console.log('Current localStorage token:', token ? 'exists' : 'missing');
+            
+            if (!userID || !token) {
+                console.log('Creating new user session...');
+                // Request new user from backend, sending existing userID if available
+                const url = userID ? `/api/me?userID=${encodeURIComponent(userID)}` : '/api/me';
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    userID = data.user.id;
+                    token = data.token;
+                    localStorage.setItem('clipflow_user_id', userID);
+                    localStorage.setItem('clipflow_token', token);
+                    console.log('New user session created:', userID);
+                }
+            } else {
+                console.log('Using existing user session:', userID);
+            }
+            return { userID, token };
+        }
+
+        async function testSession() {
+            const session = await ensureUserSession();
+            document.getElementById('sessionInfo').innerHTML = `
+                <strong>User ID:</strong> ${session.userID}<br>
+                <strong>Token:</strong> ${session.token ? 'exists' : 'missing'}<br>
+                <strong>localStorage userID:</strong> ${localStorage.getItem('clipflow_user_id')}<br>
+                <strong>localStorage token:</strong> ${localStorage.getItem('clipflow_token') ? 'exists' : 'missing'}
+            `;
+        }
+
+        async function loadTasks() {
+            try {
+                const session = await ensureUserSession();
+                console.log('Loading tasks for user:', session.userID);
+                
+                const response = await fetch('/api/tasks', {
+                    headers: {
+                        'Authorization': `Bearer ${session.token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load tasks');
+                }
+                const tasks = await response.json();
+                console.log('Loaded tasks:', tasks);
+                
+                document.getElementById('tasksInfo').innerHTML = `
+                    <strong>Tasks found:</strong> ${tasks.length}<br>
+                    <pre>${JSON.stringify(tasks, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                document.getElementById('tasksInfo').innerHTML = `Error: ${error.message}`;
+            }
+        }
+
+        function clearSession() {
+            localStorage.removeItem('clipflow_user_id');
+            localStorage.removeItem('clipflow_token');
+            document.getElementById('sessionInfo').innerHTML = 'Session cleared';
+            document.getElementById('tasksInfo').innerHTML = 'Tasks cleared';
+        }
+
+        // Load on page load
+        window.onload = function() {
+            testSession();
+            loadTasks();
+        };
+    </script>
+</body>
+</html> 

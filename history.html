@@ -301,6 +301,138 @@
             background: #667eea;
         }
 
+        /* Task Details Styles */
+        .task-details-section {
+            margin-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
+        }
+
+        .details-toggle {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            text-align: left;
+        }
+
+        .details-toggle:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+
+        .task-details-content {
+            margin-top: 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .detail-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+
+        .detail-section {
+            margin-bottom: 20px;
+        }
+
+        .detail-section h4 {
+            margin: 0 0 10px 0;
+            color: #374151;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-list {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.85rem;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .file-options {
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        .youtube-item {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .youtube-url {
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+
+        .youtube-quality {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .segments-list {
+            background: #f8fafc;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .segment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            font-size: 0.8rem;
+        }
+
+        .segment-options {
+            color: #64748b;
+            font-size: 0.75rem;
+        }
+
         @media (max-width: 768px) {
             .task-header {
                 flex-direction: column;
@@ -347,22 +479,64 @@
     </div>
 
     <script>
-        let userID = null;
-
-        // Generate or retrieve userID
-        function getUserID() {
-            if (!userID) {
-                userID = localStorage.getItem('video_merger_user_id');
-                if (!userID) {
-                    userID = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                    localStorage.setItem('video_merger_user_id', userID);
+        // User/session management
+        async function ensureUserSession() {
+            let userID = localStorage.getItem('clipflow_user_id');
+            let token = localStorage.getItem('clipflow_token');
+            console.log('Current localStorage userID:', userID);
+            console.log('Current localStorage token:', token ? 'exists' : 'missing');
+            
+            // If we have both userID and token, validate them first
+            if (userID && token) {
+                try {
+                    // Test the token by making a request to a protected endpoint
+                    const response = await fetch('/api/tasks', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        // Token is valid, return the session
+                        console.log('Using existing user session:', userID);
+                        return { userID, token };
+                    } else {
+                        console.log('Token validation failed, refreshing session...');
+                        // Token is invalid, clear it and get a new one
+                        localStorage.removeItem('clipflow_token');
+                        token = null;
+                    }
+                } catch (error) {
+                    console.log('Token validation error, refreshing session:', error);
+                    localStorage.removeItem('clipflow_token');
+                    token = null;
                 }
             }
-            return userID;
+            
+            console.log('Creating new user session...');
+            // Request new user from backend, sending existing userID if available
+            const url = userID ? `/api/me?userID=${encodeURIComponent(userID)}` : '/api/me';
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                userID = data.user.id;
+                token = data.token;
+                localStorage.setItem('clipflow_user_id', userID);
+                localStorage.setItem('clipflow_token', token);
+                console.log('New user session created:', userID);
+            }
+            return { userID, token };
         }
 
-        // Initialize userID on page load
-        getUserID();
+        // Replace getUserID with async version
+        async function getUserID() {
+            const session = await ensureUserSession();
+            return session.userID;
+        }
+
+        // On page load, ensure session
+        ensureUserSession();
 
         // Show notification
         function showNotification(message, type = 'info') {
@@ -390,19 +564,27 @@
         // Load tasks
         async function loadTasks() {
             try {
-                const currentUserID = getUserID();
-                const response = await fetch(`/api/tasks?userID=${encodeURIComponent(currentUserID)}`, {
+                const session = await ensureUserSession();
+                const currentUserID = session.userID;
+                const token = session.token;
+                
+                console.log('Loading tasks for user:', currentUserID);
+                
+                // Add Authorization header with token
+                const response = await fetch('/api/tasks', {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('clipflow_token') || ''}`
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
                     }
                 });
-
+                
                 if (!response.ok) {
                     throw new Error('Failed to load tasks');
                 }
-
                 const tasks = await response.json();
-                displayTasks(tasks);
+                const tasksArray = tasks || [];
+                console.log('Loaded tasks:', tasksArray);
+                displayTasks(tasksArray);
             } catch (error) {
                 console.error('Error loading tasks:', error);
                 showNotification('Failed to load tasks', 'error');
@@ -426,51 +608,175 @@
                 return;
             }
 
-            container.innerHTML = tasks.map(task => `
-                <div class="task-item" data-task-id="${task.id}">
-                    <div class="task-header">
-                        <div class="task-id">${task.id}</div>
-                        <div class="task-status status-${task.status}">${task.status}</div>
-                    </div>
+            container.innerHTML = tasks.map(task => {
+                // Fix date parsing - handle both ISO strings and other formats
+                let createdAt = 'Unknown';
+                let completedAt = '';
+                
+                try {
+                    if (task.created_at) {
+                        const createdDate = new Date(task.created_at);
+                        if (!isNaN(createdDate.getTime())) {
+                            createdAt = createdDate.toLocaleString();
+                        }
+                    }
                     
-                    <div class="task-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${task.progress}%"></div>
+                    if (task.completed_at) {
+                        const completedDate = new Date(task.completed_at);
+                        if (!isNaN(completedDate.getTime())) {
+                            completedAt = completedDate.toLocaleString();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Date parsing error:', error);
+                }
+
+                // Parse task details if available
+                let taskDetails = null;
+                if (task.task_details) {
+                    try {
+                        taskDetails = JSON.parse(task.task_details);
+                    } catch (error) {
+                        console.error('Failed to parse task details:', error);
+                    }
+                }
+
+                return `
+                    <div class="task-item" data-task-id="${task.id}">
+                        <div class="task-header">
+                            <div class="task-id">${task.id}</div>
+                            <div class="task-status status-${task.status}">${task.status}</div>
                         </div>
-                        <div class="progress-text">${task.progress}% complete</div>
+                        
+                        <div class="task-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${task.progress}%"></div>
+                            </div>
+                            <div class="progress-text">${task.progress}% complete</div>
+                        </div>
+                        
+                        <div class="task-message">${task.message}</div>
+                        
+                        <div class="task-meta">
+                            <div>
+                                <strong>Created:</strong> ${createdAt}
+                                ${completedAt ? `<br><strong>Completed:</strong> ${completedAt}` : ''}
+                            </div>
+                            <div class="task-actions">
+                                <button class="action-btn btn-refresh" onclick="refreshTask('${task.id}')">
+                                    🔄 Refresh
+                                </button>
+                                ${task.status === 'completed' && task.output_file ? 
+                                    `<button class="action-btn btn-download" onclick="downloadVideo('${task.output_file}')">
+                                        📥 Download
+                                    </button>` : ''
+                                }
+                                <button class="action-btn btn-delete" onclick="deleteTask('${task.id}')">
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </div>
+
+                        ${taskDetails ? `
+                            <div class="task-details-section">
+                                <button class="details-toggle" onclick="toggleTaskDetails('${task.id}')">
+                                    📋 View Task Details
+                                </button>
+                                <div class="task-details-content" id="details-${task.id}" style="display: none;">
+                                    <div class="details-grid">
+                                        <div class="detail-item">
+                                            <strong>Output Size:</strong> ${taskDetails.outputSize || 'Not specified'}
+                                        </div>
+                                        <div class="detail-item">
+                                            <strong>Frame Rate:</strong> ${taskDetails.fps || 'Not specified'} FPS
+                                        </div>
+                                        <div class="detail-item">
+                                            <strong>Video Files:</strong> ${taskDetails.videos ? taskDetails.videos.length : 0} files
+                                        </div>
+                                        <div class="detail-item">
+                                            <strong>YouTube Clips:</strong> ${taskDetails.youtube ? taskDetails.youtube.length : 0} clips
+                                        </div>
+                                        <div class="detail-item">
+                                            <strong>Audio Files:</strong> ${taskDetails.audio ? taskDetails.audio.length : 0} files
+                                        </div>
+                                    </div>
+                                    
+                                    ${taskDetails.videos && taskDetails.videos.length > 0 ? `
+                                        <div class="detail-section">
+                                            <h4>📹 Video Files</h4>
+                                            <div class="file-list">
+                                                ${taskDetails.videos.map((video, index) => `
+                                                    <div class="file-item">
+                                                        <span class="file-name">${video.file.split('/').pop()}</span>
+                                                        <span class="file-options">
+                                                            ${video.options.slowmotion ? '🐌 Slow Motion' : ''}
+                                                            ${video.options.mute ? '🔇 Muted' : ''}
+                                                            ${video.options.startTime ? `⏱️ ${video.options.startTime}-${video.options.endTime || 'end'}` : ''}
+                                                        </span>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${taskDetails.youtube && taskDetails.youtube.length > 0 ? `
+                                        <div class="detail-section">
+                                            <h4>🎬 YouTube Clips</h4>
+                                            ${taskDetails.youtube.map((yt, ytIndex) => `
+                                                <div class="youtube-item">
+                                                    <div class="youtube-url">${yt.url}</div>
+                                                    <div class="youtube-quality">Quality: ${yt.quality}</div>
+                                                    ${yt.segments && yt.segments.length > 0 ? `
+                                                        <div class="segments-list">
+                                                            ${yt.segments.map((segment, segIndex) => `
+                                                                <div class="segment-item">
+                                                                    <span>Segment ${segIndex + 1}: ${segment.timeline.start} - ${segment.timeline.end}</span>
+                                                                    <span class="segment-options">
+                                                                        ${segment.options.slowmotion ? '🐌 Slow Motion' : ''}
+                                                                        ${segment.options.mute ? '🔇 Muted' : ''}
+                                                                    </span>
+                                                                </div>
+                                                            `).join('')}
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+                                    
+                                    ${taskDetails.audio && taskDetails.audio.length > 0 ? `
+                                        <div class="detail-section">
+                                            <h4>🎵 Audio Files</h4>
+                                            <div class="file-list">
+                                                ${taskDetails.audio.map((audio, index) => `
+                                                    <div class="file-item">
+                                                        <span class="file-name">${audio.file.split('/').pop()}</span>
+                                                        <span class="file-options">
+                                                            Volume: ${Math.round((audio.options.volume || 0.8) * 100)}%
+                                                        </span>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
-                    
-                    <div class="task-message">${task.message}</div>
-                    
-                    <div class="task-meta">
-                        <div>
-                            <strong>Created:</strong> ${new Date(task.createdAt).toLocaleString()}
-                            ${task.completedAt ? `<br><strong>Completed:</strong> ${new Date(task.completedAt).toLocaleString()}` : ''}
-                        </div>
-                        <div class="task-actions">
-                            <button class="action-btn btn-refresh" onclick="refreshTask('${task.id}')">
-                                🔄 Refresh
-                            </button>
-                            ${task.status === 'completed' && task.outputFile ? 
-                                `<button class="action-btn btn-download" onclick="downloadVideo('${task.outputFile}')">
-                                    📥 Download
-                                </button>` : ''
-                            }
-                            <button class="action-btn btn-delete" onclick="deleteTask('${task.id}')">
-                                🗑️ Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // Refresh task status
         async function refreshTask(taskId) {
             try {
+                const session = await ensureUserSession();
+                const token = session.token;
+                
                 const response = await fetch(`/api/task/${taskId}`, {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('clipflow_token') || ''}`
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
                     }
                 });
 
@@ -500,8 +806,8 @@
                         <button class="action-btn btn-refresh" onclick="refreshTask('${task.id}')">
                             🔄 Refresh
                         </button>
-                        ${task.status === 'completed' && task.outputFile ? 
-                            `<button class="action-btn btn-download" onclick="downloadVideo('${task.outputFile}')">
+                        ${task.status === 'completed' && task.output_file ? 
+                            `<button class="action-btn btn-download" onclick="downloadVideo('${task.output_file}')">
                                 📥 Download
                             </button>` : ''
                         }
@@ -509,6 +815,23 @@
                             🗑️ Delete
                         </button>
                     `;
+
+                    // Update task details if they exist
+                    if (task.task_details) {
+                        try {
+                            const taskDetails = JSON.parse(task.task_details);
+                            const detailsSection = taskElement.querySelector('.task-details-section');
+                            if (detailsSection) {
+                                // Update the details content
+                                const detailsContent = detailsSection.querySelector('.task-details-content');
+                                if (detailsContent) {
+                                    detailsContent.innerHTML = generateTaskDetailsHTML(taskDetails);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Failed to parse task details during refresh:', error);
+                        }
+                    }
                 }
 
                 showNotification('Task status updated', 'success');
@@ -516,6 +839,88 @@
                 console.error('Error refreshing task:', error);
                 showNotification('Failed to refresh task', 'error');
             }
+        }
+
+        // Generate task details HTML
+        function generateTaskDetailsHTML(taskDetails) {
+            return `
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <strong>Output Size:</strong> ${taskDetails.outputSize || 'Not specified'}
+                    </div>
+                    <div class="detail-item">
+                        <strong>Frame Rate:</strong> ${taskDetails.fps || 'Not specified'} FPS
+                    </div>
+                    <div class="detail-item">
+                        <strong>Video Files:</strong> ${taskDetails.videos ? taskDetails.videos.length : 0} files
+                    </div>
+                    <div class="detail-item">
+                        <strong>YouTube Clips:</strong> ${taskDetails.youtube ? taskDetails.youtube.length : 0} clips
+                    </div>
+                    <div class="detail-item">
+                        <strong>Audio Files:</strong> ${taskDetails.audio ? taskDetails.audio.length : 0} files
+                    </div>
+                </div>
+                
+                ${taskDetails.videos && taskDetails.videos.length > 0 ? `
+                    <div class="detail-section">
+                        <h4>📹 Video Files</h4>
+                        <div class="file-list">
+                            ${taskDetails.videos.map((video, index) => `
+                                <div class="file-item">
+                                    <span class="file-name">${video.file.split('/').pop()}</span>
+                                    <span class="file-options">
+                                        ${video.options.slowmotion ? '🐌 Slow Motion' : ''}
+                                        ${video.options.mute ? '🔇 Muted' : ''}
+                                        ${video.options.startTime ? `⏱️ ${video.options.startTime}-${video.options.endTime || 'end'}` : ''}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${taskDetails.youtube && taskDetails.youtube.length > 0 ? `
+                    <div class="detail-section">
+                        <h4>🎬 YouTube Clips</h4>
+                        ${taskDetails.youtube.map((yt, ytIndex) => `
+                            <div class="youtube-item">
+                                <div class="youtube-url">${yt.url}</div>
+                                <div class="youtube-quality">Quality: ${yt.quality}</div>
+                                ${yt.segments && yt.segments.length > 0 ? `
+                                    <div class="segments-list">
+                                        ${yt.segments.map((segment, segIndex) => `
+                                            <div class="segment-item">
+                                                <span>Segment ${segIndex + 1}: ${segment.timeline.start} - ${segment.timeline.end}</span>
+                                                <span class="segment-options">
+                                                    ${segment.options.slowmotion ? '🐌 Slow Motion' : ''}
+                                                    ${segment.options.mute ? '🔇 Muted' : ''}
+                                                </span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+                
+                ${taskDetails.audio && taskDetails.audio.length > 0 ? `
+                    <div class="detail-section">
+                        <h4>🎵 Audio Files</h4>
+                        <div class="file-list">
+                            ${taskDetails.audio.map((audio, index) => `
+                                <div class="file-item">
+                                    <span class="file-name">${audio.file.split('/').pop()}</span>
+                                    <span class="file-options">
+                                        Volume: ${Math.round((audio.options.volume || 0.8) * 100)}%
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
         }
 
         // Download video
@@ -537,10 +942,14 @@
             }
 
             try {
+                const session = await ensureUserSession();
+                const token = session.token;
+                
                 const response = await fetch(`/api/task/${taskId}`, {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('clipflow_token') || ''}`
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
                     }
                 });
 
@@ -564,6 +973,20 @@
             } catch (error) {
                 console.error('Error deleting task:', error);
                 showNotification('Failed to delete task', 'error');
+            }
+        }
+
+        // Toggle task details visibility
+        function toggleTaskDetails(taskId) {
+            const detailsContent = document.getElementById(`details-${taskId}`);
+            const toggleButton = detailsContent.previousElementSibling;
+            
+            if (detailsContent.style.display === 'none') {
+                detailsContent.style.display = 'block';
+                toggleButton.textContent = '📋 Hide Task Details';
+            } else {
+                detailsContent.style.display = 'none';
+                toggleButton.textContent = '📋 View Task Details';
             }
         }
 

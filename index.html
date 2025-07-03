@@ -861,7 +861,12 @@
                             <div class="video-timeline">
                                 <div class="timeline-header">
                                     <h3>📹 Video Clips</h3>
-                                    <span style="font-size: 0.9rem; color: #64748b;">${videoClips.length} clips added</span>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 0.9rem; color: #64748b;">${videoClips.length} clips added</span>
+                                        <div style="font-size: 0.9rem; color: #10b981; font-weight: 500;">
+                                            Total Duration: <span id="totalDuration">0:00</span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="timeline-tracks" id="timelineTracks">
                                     <!-- Video clips will be added here -->
@@ -884,19 +889,7 @@
                                 </div>
                             </div>
 
-                            <div class="edit-section">
-                                <h3>🎨 Output Settings</h3>
-                                <div class="control-group">
-                                    <label>Output Size</label>
-                                    <select id="outputSize" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                        <option value="16:9">16:9 (Landscape)</option>
-                                        <option value="9:16">9:16 (Portrait)</option>
-                                        <option value="1:1">1:1 (Square)</option>
-                                        <option value="4:3" selected>4:3 (Standard)</option>
-                                        <option value="3:4">3:4 (Vertical)</option>
-                                    </select>
-                                </div>
-                            </div>
+
 
                             <div class="edit-section" id="editingControls">
                                 <!-- This will be populated based on selected clip type -->
@@ -925,7 +918,7 @@
                         </div>
                     </div>
 
-                    <!-- Audio & Generate Section -->
+                    <!-- Audio & Output Settings Section -->
                     <div class="audio-generate-section">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: stretch;">
                             <!-- Audio Section -->
@@ -939,8 +932,7 @@
                                     </button>
                                 </div>
                                 
-                                <div id="audioTimeline" style="min-height: 120px; background: white; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; color: 
-#64748b; border: 1px solid #e2e8f0;">
+                                <div id="audioTimeline" style="min-height: 120px; background: white; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: center; color: #64748b; border: 1px solid #e2e8f0;">
                                     <div style="text-align: center;">
                                         <div style="font-size: 1.5rem; margin-bottom: 8px;">🎵</div>
                                         <div>No background audio added yet</div>
@@ -949,21 +941,46 @@
                                 </div>
                             </div>
 
-                            <!-- Generate Section -->
-                            <div style="display: flex; flex-direction: column; justify-content: center; padding: 25px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; 
-text-align: center; border: 1px solid #e0f2fe;">
-                                <div style="font-size: 3rem; margin-bottom: 15px;">🚀</div>
-                                <h2 style="margin-bottom: 10px; color: #374151;">Ready to Generate?</h2>
-                                <p style="margin-bottom: 25px; color: #64748b; font-size: 1rem;">
-                                    All clips configured and ready to merge into your final video
-                                </p>
-                                <button class="generate-btn" onclick="generateVideo()" style="font-size: 1.1rem; padding: 16px 32px; width: 100%; max-width: 280px; margin: 0 auto;">
-                                    🎬 Generate Merged Video
-                                </button>
-                                <div style="margin-top: 15px; font-size: 0.8rem; color: #64748b;">
-                                    Processing time depends on video length and quality settings
+                            <!-- Output Settings Section -->
+                            <div style="background: #f8fafc; border-radius: 12px; padding: 25px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                                    <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #374151;">
+                                        ⚙️ Output Settings
+                                    </h3>
+                                </div>
+                                
+                                <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0;">
+                                    <div style="margin-bottom: 15px;">
+                                        <label style="display: block; font-weight: 500; color: #374151; margin-bottom: 8px;">Output Size</label>
+                                        <select id="outputSize" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                            <option value="16:9">16:9 (Landscape)</option>
+                                            <option value="9:16">9:16 (Portrait)</option>
+                                            <option value="1:1">1:1 (Square)</option>
+                                            <option value="4:3" selected>4:3 (Standard)</option>
+                                            <option value="3:4">3:4 (Vertical)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-weight: 500; color: #374151; margin-bottom: 8px;">Frame Rate (FPS)</label>
+                                        <select id="outputFPS" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                            <option value="24">24 FPS (Film)</option>
+                                            <option value="30" selected>30 FPS (Standard)</option>
+                                            <option value="60">60 FPS (Smooth)</option>
+                                            <option value="120">120 FPS (High Speed)</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Section -->
+                    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 40px; text-align: center; border: 1px solid #e0f2fe; margin-top: 20px;">
+                        <button class="generate-btn" onclick="generateVideo()" style="font-size: 1.1rem; padding: 16px 32px; width: 100%; max-width: 280px; margin: 0 auto;">
+                            🎬 Generate Merged Video
+                        </button>
+                        <div style="margin-top: 15px; font-size: 0.8rem; color: #64748b;">
+                            Processing time depends on video length and quality settings
                         </div>
                     </div>
                 </div>
@@ -1146,20 +1163,60 @@ onchange="updateVideoDuration()">
         let selectedClip = null;
         let userID = null;
 
-        // Generate or retrieve userID
-        function getUserID() {
-            if (!userID) {
-                userID = localStorage.getItem('video_merger_user_id');
-                if (!userID) {
-                    userID = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                    localStorage.setItem('video_merger_user_id', userID);
+        // User/session management
+        async function ensureUserSession() {
+            let userID = localStorage.getItem('clipflow_user_id');
+            let token = localStorage.getItem('clipflow_token');
+            
+            // If we have both userID and token, validate them first
+            if (userID && token) {
+                try {
+                    // Test the token by making a request to a protected endpoint
+                    const response = await fetch('/api/tasks', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        // Token is valid, return the session
+                        return { userID, token };
+                    } else {
+                        console.log('Token validation failed, refreshing session...');
+                        // Token is invalid, clear it and get a new one
+                        localStorage.removeItem('clipflow_token');
+                        token = null;
+                    }
+                } catch (error) {
+                    console.log('Token validation error, refreshing session:', error);
+                    localStorage.removeItem('clipflow_token');
+                    token = null;
                 }
             }
-            return userID;
+            
+            // Request new user from backend, sending existing userID if available
+            const url = userID ? `/api/me?userID=${encodeURIComponent(userID)}` : '/api/me';
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                userID = data.user.id;
+                token = data.token;
+                localStorage.setItem('clipflow_user_id', userID);
+                localStorage.setItem('clipflow_token', token);
+                console.log('Session refreshed:', userID);
+            }
+            return { userID, token };
         }
 
-        // Initialize userID on page load
-        getUserID();
+        // Replace getUserID with async version
+        async function getUserID() {
+            const session = await ensureUserSession();
+            return session.userID;
+        }
+
+        // On page load, ensure session
+        ensureUserSession();
 
         // Initialize playback speed
         window.currentPlaybackSpeed = 1.0;
@@ -1230,11 +1287,15 @@ onchange="updateVideoDuration()">
             document.body.appendChild(progressDiv);
 
             try {
+                const session = await ensureUserSession();
                 const formData = new FormData();
                 formData.append('file', file);
 
                 const response = await fetch('/api/upload', {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.token}`
+                    },
                     body: formData
                 });
 
@@ -1402,6 +1463,9 @@ onchange="updateVideoDuration()">
                 header.textContent = `${totalClips} clips added`;
             }
             
+            // Update total duration
+            updateTotalDuration();
+            
             // Add "Add More" button
             const addMoreBtn = document.createElement('div');
             addMoreBtn.className = 'add-more-btn';
@@ -1411,6 +1475,40 @@ onchange="updateVideoDuration()">
             `;
             addMoreBtn.onclick = () => showUploadOverlay();
             container.appendChild(addMoreBtn);
+        }
+
+        function updateTotalDuration() {
+            let totalSeconds = 0;
+            
+            videoClips.forEach(clip => {
+                if (clip.type === 'youtube') {
+                    // For YouTube videos, sum up all segments
+                    if (clip.segments && clip.segments.length > 0) {
+                        clip.segments.forEach(segment => {
+                            const startSeconds = timeToSeconds(segment.timeline.start);
+                            const endSeconds = timeToSeconds(segment.timeline.end);
+                            totalSeconds += (endSeconds - startSeconds);
+                        });
+                    }
+                } else {
+                    // For regular videos, use the clip duration
+                    if (clip.segments && clip.segments.length > 0) {
+                        const segment = clip.segments[0];
+                        const startSeconds = timeToSeconds(segment.start || '0:00');
+                        const endSeconds = timeToSeconds(segment.end || clip.duration);
+                        totalSeconds += (endSeconds - startSeconds);
+                    } else {
+                        // Fallback to full clip duration
+                        totalSeconds += timeToSeconds(clip.duration || '0:00');
+                    }
+                }
+            });
+            
+            const totalDuration = secondsToTime(totalSeconds);
+            const durationElement = document.getElementById('totalDuration');
+            if (durationElement) {
+                durationElement.textContent = totalDuration;
+            }
         }
 
         function createTimelineClip(clip, segment = null, segmentIndex = null) {
@@ -1639,6 +1737,17 @@ onchange="updateVideoDuration()">
 
         function updateEditingControls(clip) {
             const controlsContainer = document.getElementById('editingControls');
+            
+            if (!clip) {
+                controlsContainer.innerHTML = `
+                    <h3>📹 Video Clip</h3>
+                    <div style="text-align: center; padding: 40px; color: #64748b;">
+                        <div style="font-size: 2rem; margin-bottom: 10px;">🎬</div>
+                        <p>Select a video clip to edit its settings</p>
+                    </div>
+                `;
+                return;
+            }
             
             if (clip.type === 'file') {
                 // Show cropping/duration controls for regular videos
@@ -2041,17 +2150,19 @@ onchange="updateVideoDuration()">
                 audio.push({
                     file: clip.uploadedUrl, // Use the uploaded URL instead of file blob
                     options: {
-                        index: index,
-                        volume: 0.8, // Default volume
+                        volume: clip.volume || 0.8, // Use stored volume or default
                         fadeIn: false,
                         fadeOut: false
                     }
                 });
             });
             
+            const session = await ensureUserSession();
+            const outputFPS = parseInt(document.getElementById('outputFPS').value);
+            
             const payload = {
-                userID: getUserID(),
                 outputsize: outputSize,
+                fps: outputFPS,
                 videos: videos,
                 youtube: youtube,
                 audio: audio
@@ -2065,7 +2176,8 @@ onchange="updateVideoDuration()">
                 const response = await fetch(`${API_BASE}/api/generate-video`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.token}`
                     },
                     body: JSON.stringify(payload)
                 });
@@ -2074,8 +2186,10 @@ onchange="updateVideoDuration()">
                     const result = await response.json();
                     showNotification(`Video generation started! Task ID: ${result.taskId}`, 'success');
                     
-                    // Start polling task status
-                    pollTaskStatus(result.taskId);
+                    // Navigate to history page to show task progress
+                    setTimeout(() => {
+                        window.location.href = '/history';
+                    }, 1500);
                 } else {
                     const error = await response.text();
                     showNotification(`Error: ${error}`, 'error');
@@ -2091,7 +2205,13 @@ onchange="updateVideoDuration()">
             
             const pollInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`${API_BASE}/api/task/${taskId}`);
+                    const session = await ensureUserSession();
+                    const response = await fetch(`${API_BASE}/api/task/${taskId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${session.token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
                     if (response.ok) {
                         const task = await response.json();
                         console.log('Task status:', task);
@@ -2695,8 +2815,7 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
                 
                 audioElement.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: 
-white; font-size: 1.2rem;">
+                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;">
                             🎵
                         </div>
                         <div style="flex: 1; min-width: 0;">
@@ -2707,8 +2826,14 @@ white; font-size: 1.2rem;">
                                 ${clip.duration} • ${clip.size}
                             </div>
                         </div>
-                        <button onclick="removeAudioClip(${index})" style="position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; width: 20px; height: 20px; border-radius: 
-50%; cursor: pointer; font-size: 0.7rem; display: flex; align-items: center; justify-content: center;">×</button>
+                        <button onclick="removeAudioClip(${index})" style="position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; font-size: 0.7rem; display: flex; align-items: center; justify-content: center;">×</button>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem;">
+                            <span>Volume:</span>
+                            <input type="range" min="0" max="100" value="80" style="flex: 1;" onchange="updateAudioVolume(${index}, this.value)">
+                            <span style="min-width: 30px;">80%</span>
+                        </label>
                     </div>
                 `;
                 
@@ -2728,6 +2853,17 @@ white; font-size: 1.2rem;">
                 
                 container.appendChild(audioElement);
             });
+        }
+
+        function updateAudioVolume(index, volume) {
+            if (audioClips[index]) {
+                audioClips[index].volume = parseInt(volume) / 100;
+                // Update the volume display
+                const volumeDisplay = event.target.parentElement.querySelector('span:last-child');
+                if (volumeDisplay) {
+                    volumeDisplay.textContent = volume + '%';
+                }
+            }
         }
 
         function removeAudioClip(index) {
@@ -2782,3 +2918,4 @@ white; font-size: 1.2rem;">
           </script>
   </body>
   </html>
+

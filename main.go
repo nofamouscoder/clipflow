@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -25,8 +26,8 @@ import (
 )
 
 type VideoRequest struct {
-	UserID     string        `json:"userID"`
 	OutputSize string        `json:"outputsize"`
+	FPS        int           `json:"fps"`
 	Videos     []VideoFile   `json:"videos"`
 	YouTube    []YouTubeClip `json:"youtube"`
 	Audio      []AudioFile   `json:"audio"`
@@ -68,7 +69,14 @@ type SegmentOptions struct {
 }
 
 type AudioFile struct {
-	File string `json:"file"`
+	File    string       `json:"file"`
+	Options AudioOptions `json:"options"`
+}
+
+type AudioOptions struct {
+	Volume  float64 `json:"volume"`
+	FadeIn  bool    `json:"fadeIn"`
+	FadeOut bool    `json:"fadeOut"`
 }
 
 type TaskResponse struct {
@@ -141,14 +149,36 @@ func main() {
 	router.Static("/output", config.AppConfig.File.OutputDir)
 	router.Static("/uploads", config.AppConfig.File.UploadsDir)
 
-	// Serve static frontend (Next.js build)
-	// router.Static("/", "./static")
-	// Fallback for SPA routing
-	router.NoRoute(func(c *gin.Context) {
-		htmlContent, err := os.ReadFile("./static/index.html")
+	// Serve frontend dynamically
+	router.GET("/", func(c *gin.Context) {
+		htmlContent, err := os.ReadFile("./index.html")
 		if err != nil {
-			log.Printf("Error loading static/index.html: %v", err)
+			log.Printf("Error loading index.html: %v", err)
 			c.String(http.StatusInternalServerError, "Error loading frontend")
+			return
+		}
+		c.Header("Content-Type", "text/html")
+		c.Data(http.StatusOK, "text/html", htmlContent)
+	})
+
+	// Serve history page
+	router.GET("/history", func(c *gin.Context) {
+		htmlContent, err := os.ReadFile("./history.html")
+		if err != nil {
+			log.Printf("Error loading history.html: %v", err)
+			c.String(http.StatusInternalServerError, "Error loading history page")
+			return
+		}
+		c.Header("Content-Type", "text/html")
+		c.Data(http.StatusOK, "text/html", htmlContent)
+	})
+
+	// Serve debug page
+	router.GET("/debug", func(c *gin.Context) {
+		htmlContent, err := os.ReadFile("./debug.html")
+		if err != nil {
+			log.Printf("Error loading debug.html: %v", err)
+			c.String(http.StatusInternalServerError, "Error loading debug page")
 			return
 		}
 		c.Header("Content-Type", "text/html")
@@ -163,13 +193,11 @@ func main() {
 		api.POST("/login", loginHandler)
 		api.GET("/me", meHandler)
 
-		// File upload route
-		api.POST("/upload", uploadFileHandler)
-
 		// Protected routes (using optional auth middleware)
-		protected := api.Group("/")
+		protected := api.Group("")
 		protected.Use(middleware.OptionalAuthMiddleware(db))
 		{
+			protected.POST("/upload", uploadFileHandler)
 			protected.POST("/generate-video", generateVideoHandler)
 			protected.GET("/tasks", getUserTasksHandler)
 			protected.GET("/task/:taskId", getTaskStatusHandler)
@@ -182,57 +210,104 @@ func main() {
 }
 
 func meHandler(c *gin.Context) {
-	// Check if user is authenticated
-	userID, exists := c.Get("userID")
-	if !exists {
-		// Create anonymous user
-		user := &models.User{
-			ID:           uuid.New().String(),
-			Email:        fmt.Sprintf("anonymous_%s@clipflow.local", uuid.New().String()[:8]),
-			Username:     fmt.Sprintf("Anonymous_%s", uuid.New().String()[:8]),
-			PasswordHash: "", // No password for anonymous users
-			CreatedAt:    time.Now(),
-			UpdatedAt:    time.Now(),
-		}
-
-		if err := db.CreateUser(user); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+	// 1. Check for JWT via middleware (userID in context)
+	if userID, exists := c.Get("userID"); exists {
+		log.Printf("/api/me: Authenticated via JWT, userID: %v", userID)
+		user, err := db.GetUserByID(userID.(string))
+		if err != nil {
+			log.Printf("/api/me: Failed to get user by JWT userID: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
 			return
 		}
-
-		// Generate token
 		token, err := auth.GenerateToken(user.ID, user.Email)
 		if err != nil {
+			log.Printf("/api/me: Failed to generate token for JWT userID: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 			return
 		}
-
 		c.JSON(http.StatusOK, MeResponse{
 			Token: token,
 			User:  user,
-			New:   true,
+			New:   false,
 		})
 		return
 	}
 
-	// User is authenticated, return existing user info
-	user, err := db.GetUserByID(userID.(string))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
-		return
+	// 2. No JWT, check for userID in query param
+	providedUserID := c.Query("userID")
+	if providedUserID != "" {
+		log.Printf("/api/me: No JWT, userID param provided: %s", providedUserID)
+		user, err := db.GetUserByID(providedUserID)
+		if err == nil && user != nil {
+			log.Printf("/api/me: Found user for provided userID: %s", providedUserID)
+			token, err := auth.GenerateToken(user.ID, user.Email)
+			if err != nil {
+				log.Printf("/api/me: Failed to generate token for provided userID: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+				return
+			}
+			c.JSON(http.StatusOK, MeResponse{
+				Token: token,
+				User:  user,
+				New:   false,
+			})
+			return
+		} else {
+			log.Printf("/api/me: Provided userID not found in database, creating new user with provided ID: %s", providedUserID)
+			// Create new user with the provided userID
+			user := &models.User{
+				ID:           providedUserID,
+				Email:        fmt.Sprintf("anonymous_%s@clipflow.local", uuid.New().String()[:8]),
+				Username:     fmt.Sprintf("Anonymous_%s", uuid.New().String()[:8]),
+				PasswordHash: "",
+				CreatedAt:    time.Now(),
+				UpdatedAt:    time.Now(),
+			}
+			if err := db.CreateUser(user); err != nil {
+				log.Printf("/api/me: Failed to create new user with provided ID: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+				return
+			}
+			token, err := auth.GenerateToken(user.ID, user.Email)
+			if err != nil {
+				log.Printf("/api/me: Failed to generate token for new user with provided ID: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+				return
+			}
+			c.JSON(http.StatusOK, MeResponse{
+				Token: token,
+				User:  user,
+				New:   true,
+			})
+			return
+		}
 	}
 
-	// Generate new token
+	// 3. No JWT, no userID provided: create new user with new ID
+	log.Printf("/api/me: Creating new anonymous user with new ID.")
+	user := &models.User{
+		ID:           uuid.New().String(),
+		Email:        fmt.Sprintf("anonymous_%s@clipflow.local", uuid.New().String()[:8]),
+		Username:     fmt.Sprintf("Anonymous_%s", uuid.New().String()[:8]),
+		PasswordHash: "",
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	if err := db.CreateUser(user); err != nil {
+		log.Printf("/api/me: Failed to create new user: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
 	token, err := auth.GenerateToken(user.ID, user.Email)
 	if err != nil {
+		log.Printf("/api/me: Failed to generate token for new user: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
-
 	c.JSON(http.StatusOK, MeResponse{
 		Token: token,
 		User:  user,
-		New:   false,
+		New:   true,
 	})
 }
 
@@ -319,27 +394,11 @@ func loginHandler(c *gin.Context) {
 }
 
 func generateVideoHandler(c *gin.Context) {
-	// Get or create user
 	userID, exists := c.Get("userID")
-	if !exists {
-		// Create anonymous user
-		user := &models.User{
-			ID:           uuid.New().String(),
-			Email:        fmt.Sprintf("anonymous_%s@clipflow.local", uuid.New().String()[:8]),
-			Username:     fmt.Sprintf("Anonymous_%s", uuid.New().String()[:8]),
-			PasswordHash: "",
-			CreatedAt:    time.Now(),
-			UpdatedAt:    time.Now(),
-		}
-
-		if err := db.CreateUser(user); err != nil {
-			log.Printf("Failed to create anonymous user: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
-			return
-		}
-
-		userID = user.ID
-		log.Printf("Created anonymous user: %s", userID)
+	if !exists || userID == nil {
+		log.Printf("Video generation request failed - missing userID in JWT context")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: userID required in token"})
+		return
 	}
 
 	// Only accept application/json
@@ -415,13 +474,29 @@ func generateVideoHandler(c *gin.Context) {
 
 	// Create task
 	taskID := uuid.New().String()
+
+	// Create task details JSON
+	taskDetails := map[string]interface{}{
+		"outputSize": req.OutputSize,
+		"fps":        req.FPS,
+		"videos":     req.Videos,
+		"youtube":    req.YouTube,
+		"audio":      req.Audio,
+	}
+
+	taskDetailsJSON, err := json.Marshal(taskDetails)
+	if err != nil {
+		log.Printf("Failed to marshal task details for task %s: %v", taskID, err)
+	}
+
 	task := &models.Task{
-		ID:        taskID,
-		UserID:    userID.(string),
-		Status:    "pending",
-		Progress:  0,
-		Message:   "Task created, preparing for processing",
-		CreatedAt: time.Now(),
+		ID:          taskID,
+		UserID:      userID.(string),
+		Status:      "pending",
+		Progress:    0,
+		Message:     "Task created, preparing for processing",
+		TaskDetails: string(taskDetailsJSON),
+		CreatedAt:   time.Now(),
 	}
 
 	if err := db.CreateTask(task); err != nil {
@@ -462,20 +537,26 @@ func getTaskStatusHandler(c *gin.Context) {
 }
 
 func getUserTasksHandler(c *gin.Context) {
-	// Get userID from query parameter
-	userID := c.Query("userID")
-	if userID == "" {
-		log.Printf("Tasks request failed - missing userID parameter")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "userID parameter is required"})
+	userID, exists := c.Get("userID")
+	if !exists || userID == nil {
+		log.Printf("Tasks request failed - missing userID in JWT context")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: userID required in token"})
 		return
 	}
 
 	log.Printf("Fetching tasks for user: %s", userID)
 
-	tasks, err := db.GetTasksByUserID(userID)
+	tasks, err := db.GetTasksByUserID(userID.(string))
 	if err != nil {
 		log.Printf("Failed to fetch tasks for user %s: %v", userID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+		return
+	}
+
+	// Ensure we always return an array, even if empty
+	if tasks == nil || len(tasks) == 0 {
+		c.Header("Content-Type", "application/json")
+		c.Writer.Write([]byte("[]"))
 		return
 	}
 
@@ -486,24 +567,23 @@ func getUserTasksHandler(c *gin.Context) {
 func deleteTaskHandler(c *gin.Context) {
 	taskID := c.Param("taskId")
 	userID, exists := c.Get("userID")
-
+	if !exists || userID == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: userID required in token"})
+		return
+	}
 	task, err := db.GetTaskByID(taskID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 		return
 	}
-
-	// If user is authenticated, check ownership
-	if exists && task.UserID != userID {
+	if task.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
-
 	if err := db.DeleteTask(taskID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
 }
 
@@ -577,29 +657,45 @@ func processVideoRequest(taskID string, req VideoRequest, uploadedVideos []strin
 	}
 
 	// Process uploaded video files
-	for i, videoPath := range uploadedVideos {
-		if i < len(req.Videos) {
-			video := req.Videos[i]
-			log.Printf("Processing uploaded video %d: %s", i, videoPath)
+	for i, video := range req.Videos {
+		log.Printf("Processing uploaded video %d: %s", i, video.File)
 
-			// Apply video options if specified
-			if video.Options.Slowmotion || video.Options.Mute {
-				processedPath := filepath.Join(taskDir, fmt.Sprintf("processed_upload_%d.mp4", i))
-				log.Printf("Applying effects to video %d: slowmotion=%v, mute=%v", i, video.Options.Slowmotion, video.Options.Mute)
-
-				if err := applyVideoEffects(videoPath, processedPath, video.Options.Slowmotion, video.Options.Mute); err != nil {
-					log.Printf("Failed to apply effects to uploaded video %d: %v", i, err)
-					task.Status = "failed"
-					task.Message = fmt.Sprintf("Failed to apply effects to uploaded video: %v", err)
-					if err := db.UpdateTask(task); err != nil {
-						log.Printf("Failed to update failed task %s: %v", taskID, err)
-					}
-					return
-				}
-				videoFiles = append(videoFiles, processedPath)
-			} else {
-				videoFiles = append(videoFiles, videoPath)
+		// Find the corresponding uploaded video path
+		var videoPath string
+		for _, uploadedPath := range uploadedVideos {
+			if strings.HasSuffix(uploadedPath, filepath.Base(video.File)) {
+				videoPath = uploadedPath
+				break
 			}
+		}
+
+		if videoPath == "" {
+			log.Printf("Failed to find uploaded video path for %s", video.File)
+			task.Status = "failed"
+			task.Message = fmt.Sprintf("Failed to find uploaded video: %s", video.File)
+			if err := db.UpdateTask(task); err != nil {
+				log.Printf("Failed to update failed task %s: %v", taskID, err)
+			}
+			return
+		}
+
+		// Apply video options if specified
+		if video.Options.Slowmotion || video.Options.Mute {
+			processedPath := filepath.Join(taskDir, fmt.Sprintf("processed_upload_%d.mp4", i))
+			log.Printf("Applying effects to video %d: slowmotion=%v, mute=%v", i, video.Options.Slowmotion, video.Options.Mute)
+
+			if err := applyVideoEffects(videoPath, processedPath, video.Options.Slowmotion, video.Options.Mute); err != nil {
+				log.Printf("Failed to apply effects to uploaded video %d: %v", i, err)
+				task.Status = "failed"
+				task.Message = fmt.Sprintf("Failed to apply effects to uploaded video: %v", err)
+				if err := db.UpdateTask(task); err != nil {
+					log.Printf("Failed to update failed task %s: %v", taskID, err)
+				}
+				return
+			}
+			videoFiles = append(videoFiles, processedPath)
+		} else {
+			videoFiles = append(videoFiles, videoPath)
 		}
 	}
 
@@ -625,7 +721,7 @@ func processVideoRequest(taskID string, req VideoRequest, uploadedVideos []strin
 	outputPath := filepath.Join(config.AppConfig.File.OutputDir, outputFileName)
 	log.Printf("Output path for task %s: %s", taskID, outputPath)
 
-	if err := mergeVideos(videoFiles, outputPath, req.OutputSize); err != nil {
+	if err := mergeVideos(videoFiles, outputPath, req.OutputSize, req.FPS); err != nil {
 		log.Printf("Failed to merge videos for task %s: %v", taskID, err)
 		task.Status = "failed"
 		task.Message = fmt.Sprintf("Failed to merge videos: %v", err)
@@ -728,7 +824,7 @@ func applyVideoEffects(inputPath, outputPath string, slowmotion, mute bool) erro
 	return nil
 }
 
-func mergeVideos(inputFiles []string, outputPath, outputSize string) error {
+func mergeVideos(inputFiles []string, outputPath, outputSize string, fps int) error {
 	log.Printf("Merging %d videos to %s with size %s", len(inputFiles), outputPath, outputSize)
 
 	if len(inputFiles) == 0 {
@@ -791,6 +887,7 @@ func mergeVideos(inputFiles []string, outputPath, outputSize string) error {
 		"-c:v", "libx264",
 		"-crf", "23",
 		"-preset", "medium",
+		"-r", fmt.Sprintf("%d", fps),
 		"-c:a", "aac",
 		"-b:a", "128k",
 		outputPath,
@@ -839,6 +936,26 @@ func generateFileHash(input string) string {
 
 // uploadFileHandler handles video/audio file uploads with validation
 func uploadFileHandler(c *gin.Context) {
+	log.Printf("📤 [Upload] Request received for path: %s", c.Request.URL.Path)
+	log.Printf("📤 [Upload] Authorization header: %s", c.GetHeader("Authorization"))
+	log.Printf("📤 [Upload] All headers: %v", c.Request.Header)
+
+	userID, exists := c.Get("userID")
+	log.Printf("📤 [Upload] userID from context: %v, exists: %v", userID, exists)
+
+	// Check all context keys
+	keys := make([]string, 0)
+	for key := range c.Keys {
+		keys = append(keys, key)
+	}
+	log.Printf("📤 [Upload] All context keys: %v", keys)
+
+	if !exists || userID == nil {
+		log.Printf("📤 [Upload] Unauthorized - userID not found in context")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: userID required in token"})
+		return
+	}
+	log.Printf("📤 [Upload] User authenticated: %s", userID)
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
 		log.Printf("Upload error - no file: %v", err)
