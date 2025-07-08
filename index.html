@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clipflow</title>
+    <title>Clipflow - Professional Video Editing Made Simple</title>
     <style>
         * {
             margin: 0;
@@ -18,26 +18,102 @@
             color: #333;
         }
 
+        /* Header Styles */
+        .header-main {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 15px 0;
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .logo svg {
+            width: 120px;
+            height: 36px;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #374151;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #374151;
+        }
+
+        /* Main Content */
         .app-container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
-            min-height: 100vh;
+            min-height: calc(100vh - 200px);
         }
 
-        .header {
+        .main-header {
             text-align: center;
             margin-bottom: 40px;
             color: white;
         }
 
-        .header h1 {
+        .main-header h1 {
             font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 10px;
         }
 
-        .header p {
+        .main-header p {
             font-size: 1.1rem;
             opacity: 0.9;
         }
@@ -50,6 +126,203 @@
             min-height: 70vh;
         }
 
+        /* Footer Styles */
+        .footer {
+            background: #1f2937;
+            color: white;
+            padding: 40px 0 20px;
+            margin-top: 60px;
+        }
+
+        .footer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+
+        .footer-section h3 {
+            color: #f9fafb;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .footer-section p {
+            color: #d1d5db;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 8px;
+        }
+
+        .footer-links a {
+            color: #d1d5db;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: #667eea;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #374151;
+            padding-top: 20px;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .social-link {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #374151;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .social-link:hover {
+            background: #667eea;
+            transform: translateY(-2px);
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            background: #f8fafc;
+            padding: 60px 0;
+            margin-top: 60px;
+        }
+
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .faq-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .faq-header h2 {
+            font-size: 2rem;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .faq-header p {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+
+        .faq-item {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .faq-question {
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #374151;
+            transition: background-color 0.3s ease;
+        }
+
+        .faq-question:hover {
+            background: #f8fafc;
+        }
+
+        .faq-question.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .faq-toggle {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .faq-question.active .faq-toggle {
+            transform: rotate(45deg);
+        }
+
+        .faq-answer {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        .faq-answer.active {
+            padding: 20px;
+            max-height: 200px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .nav-menu {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .header-container {
+                padding: 0 15px;
+            }
+
+            .logo svg {
+                width: 100px;
+                height: 30px;
+            }
+
+            .main-header h1 {
+                font-size: 2rem;
+            }
+
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .faq-container {
+                padding: 0 15px;
+            }
+        }
+
+        /* Existing styles continue below */
         .upload-zone {
             text-align: center;
             padding: 80px 40px;
@@ -807,15 +1080,27 @@
     </style>
 </head>
 <body>
+    <!-- Header -->
+    <header class="header-main">
+        <div class="header-container">
+            <a href="/" class="logo">
+                <img src="/clipflow-logo.svg" alt="ClipFlow Logo" width="120" height="40">
+            </a>
+            
+            <nav class="nav-menu">
+                <a href="/" class="nav-link active">🏠 Home</a>
+                <a href="/history" class="nav-link">📋 History</a>
+                <a href="#faq" class="nav-link">❓ FAQ</a>
+            </nav>
+            
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+        </div>
+    </header>
+
     <div class="app-container">
-        <div class="header">
-            <h1>Clipflow</h1>
+        <div class="main-header">
+            <h1>Professional Video Editing</h1>
             <p>Merge videos and YouTube clips with professional editing tools</p>
-            <div style="margin-top: 20px;">
-                <a href="/history" style="color: white; text-decoration: none; padding: 8px 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; transition: all 0.3s ease;">
-                    📋 View History
-                </a>
-            </div>
         </div>
 
         <div class="main-content">
@@ -888,8 +1173,6 @@
                                     </select>
                                 </div>
                             </div>
-
-
 
                             <div class="edit-section" id="editingControls">
                                 <!-- This will be populated based on selected clip type -->
@@ -987,6 +1270,150 @@
             </div>
         </div>
     </div>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="faq-section">
+        <div class="faq-container">
+            <div class="faq-header">
+                <h2>Frequently Asked Questions</h2>
+                <p>Everything you need to know about ClipFlow</p>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFAQ(this)">
+                    What video formats does ClipFlow support?
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">
+                    ClipFlow supports all major video formats including MP4, MOV, AVI, WMV, FLV, MKV, and WEBM. For audio, we support MP3, WAV, AAC, M4A, OGG, and FLAC formats.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFAQ(this)">
+                    How do I add YouTube videos to my project?
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">
+                    Simply click "Add YouTube Clips" and paste the YouTube URL. You can then select specific time segments from the video and apply effects like slow motion or mute audio.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFAQ(this)">
+                    What's the maximum file size I can upload?
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">
+                    Video files can be up to 100MB, and audio files up to 20MB. For larger files, we recommend compressing them first or using YouTube links instead.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFAQ(this)">
+                    How long does video processing take?
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">
+                    Processing time depends on video length, quality settings, and the number of clips. Typically, a 5-minute video takes 2-5 minutes to process. You can track progress in the History section.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFAQ(this)">
+                    Can I edit videos after uploading them?
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">
+                    Yes! You can trim videos, adjust playback speed, mute audio, and apply slow motion effects. For YouTube clips, you can select specific time segments and apply the same effects.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFAQ(this)">
+                    What output formats and quality options are available?
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">
+                    Videos are output in MP4 format with H.264 encoding. You can choose from various aspect ratios (16:9, 9:16, 1:1, 4:3, 3:4) and frame rates (24, 30, 60, 120 FPS) for professional results.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFAQ(this)">
+                    Is my data secure and private?
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">
+                    Yes, your uploaded files and generated videos are private and secure. We use industry-standard encryption and automatically delete temporary files after processing. Your data is never shared with third parties.
+                </div>
+            </div>
+            
+            <div class="faq-item">
+                <div class="faq-question" onclick="toggleFAQ(this)">
+                    Can I use background music in my videos?
+                    <span class="faq-toggle">+</span>
+                </div>
+                <div class="faq-answer">
+                    Absolutely! You can upload audio files and they will be mixed with your video audio. You can control the volume levels and the audio will automatically loop to match your video length.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>About ClipFlow</h3>
+                    <p>ClipFlow is a powerful yet simple video editing platform that lets you merge videos, add YouTube clips, and create professional content without complex software.</p>
+                    <div class="social-links">
+                        <a href="#" class="social-link">📘</a>
+                        <a href="#" class="social-link">🐦</a>
+                        <a href="#" class="social-link">📷</a>
+                        <a href="#" class="social-link">💼</a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>Features</h3>
+                    <ul class="footer-links">
+                        <li><a href="#">Video Merging</a></li>
+                        <li><a href="#">YouTube Integration</a></li>
+                        <li><a href="#">Audio Mixing</a></li>
+                        <li><a href="#">Professional Effects</a></li>
+                        <li><a href="#">Multiple Formats</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>Support</h3>
+                    <ul class="footer-links">
+                        <li><a href="#faq">FAQ</a></li>
+                        <li><a href="#">Documentation</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                        <li><a href="#">Bug Report</a></li>
+                        <li><a href="#">Feature Request</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>Legal</h3>
+                    <ul class="footer-links">
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">Cookie Policy</a></li>
+                        <li><a href="#">DMCA</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2024 ClipFlow. All rights reserved. Made with ❤️ for content creators.</p>
+            </div>
+        </div>
+    </footer>
 
     <!-- Upload Overlay -->
     <div id="uploadOverlay" class="overlay">
@@ -2915,7 +3342,45 @@ font-size: 0.7rem; margin-left: auto;" title="Delete segment">×</button>
                 closeYouTubeEditor();
             }
         });
-          </script>
+
+        // FAQ Toggle Function
+        function toggleFAQ(element) {
+            const answer = element.nextElementSibling;
+            const isActive = element.classList.contains('active');
+            
+            // Close all other FAQ items
+            document.querySelectorAll('.faq-question').forEach(q => {
+                q.classList.remove('active');
+                q.nextElementSibling.classList.remove('active');
+            });
+            
+            // Toggle current FAQ item
+            if (!isActive) {
+                element.classList.add('active');
+                answer.classList.add('active');
+            }
+        }
+
+        // Mobile Menu Toggle Function
+        function toggleMobileMenu() {
+            const navMenu = document.querySelector('.nav-menu');
+            navMenu.style.display = navMenu.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
   </body>
   </html>
 

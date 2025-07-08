@@ -1,0 +1,36 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iconGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon: Video camera with flow lines -->
+  <g transform="translate(10, 10)">
+    <!-- Camera body -->
+    <rect x="0" y="8" width="20" height="14" rx="2" fill="url(#iconGradient)" stroke="#fff" stroke-width="1"/>
+    
+    <!-- Camera lens -->
+    <circle cx="10" cy="15" r="4" fill="none" stroke="#fff" stroke-width="2"/>
+    <circle cx="10" cy="15" r="2" fill="#fff"/>
+    
+    <!-- Flow lines -->
+    <path d="M 25 12 Q 35 8 45 12 Q 55 16 65 12" stroke="url(#logoGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 25 18 Q 35 22 45 18 Q 55 14 65 18" stroke="url(#logoGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    
+    <!-- Play button -->
+    <polygon points="70,10 70,20 78,15" fill="url(#logoGradient)"/>
+  </g>
+  
+  <!-- Text: ClipFlow -->
+  <text x="90" y="25" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="url(#logoGradient)">Clip</text>
+  <text x="90" y="42" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#374151">Flow</text>
+  
+  <!-- Tagline -->
+  <text x="90" y="55" font-family="Arial, sans-serif" font-size="8" fill="#64748b">Video Editing Made Simple</text>
+</svg> 

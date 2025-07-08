@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -148,6 +149,8 @@ func main() {
 	// Serve static files
 	router.Static("/output", config.AppConfig.File.OutputDir)
 	router.Static("/uploads", config.AppConfig.File.UploadsDir)
+	router.Static("/static", "./static")
+	router.StaticFile("/clipflow-logo.svg", "./clipflow-logo.svg")
 
 	// Serve frontend dynamically
 	router.GET("/", func(c *gin.Context) {
@@ -610,7 +613,15 @@ func processVideoRequest(taskID string, req VideoRequest, uploadedVideos []strin
 	os.MkdirAll(taskDir, 0755)
 	defer os.RemoveAll(taskDir) // Clean up after processing
 
-	var videoFiles []string
+	// Create a slice to hold all video clips with their indices
+	type VideoClip struct {
+		Index     int
+		FilePath  string
+		IsYouTube bool
+		Original  interface{} // Store original request data for reference
+	}
+
+	var videoClips []VideoClip
 	videoIndex := 0
 
 	// Process YouTube videos
@@ -626,7 +637,7 @@ func processVideoRequest(taskID string, req VideoRequest, uploadedVideos []strin
 			fileName := fmt.Sprintf("yt_%d_%s.mp4", segment.Index, generateFileHash(ytClip.URL+segment.Timeline.Start+segment.Timeline.End))
 			outputPath := filepath.Join(taskDir, fileName)
 
-			log.Printf("Downloading YouTube segment: %s (%s - %s)", ytClip.URL, segment.Timeline.Start, segment.Timeline.End)
+			log.Printf("Downloading YouTube segment: %s (%s - %s) with index %d", ytClip.URL, segment.Timeline.Start, segment.Timeline.End, segment.Index)
 
 			if err := downloadYouTubeSegment(ytClip.URL, ytClip.Quality, segment.Timeline, outputPath); err != nil {
 				log.Printf("Failed to download YouTube segment for task %s: %v", taskID, err)
@@ -651,14 +662,19 @@ func processVideoRequest(taskID string, req VideoRequest, uploadedVideos []strin
 				os.Rename(processedPath, outputPath)
 			}
 
-			videoFiles = append(videoFiles, outputPath)
+			videoClips = append(videoClips, VideoClip{
+				Index:     segment.Index,
+				FilePath:  outputPath,
+				IsYouTube: true,
+				Original:  segment,
+			})
 			videoIndex++
 		}
 	}
 
 	// Process uploaded video files
 	for i, video := range req.Videos {
-		log.Printf("Processing uploaded video %d: %s", i, video.File)
+		log.Printf("Processing uploaded video %d: %s with index %d", i, video.File, video.Options.Index)
 
 		// Find the corresponding uploaded video path
 		var videoPath string
@@ -693,13 +709,23 @@ func processVideoRequest(taskID string, req VideoRequest, uploadedVideos []strin
 				}
 				return
 			}
-			videoFiles = append(videoFiles, processedPath)
+			videoClips = append(videoClips, VideoClip{
+				Index:     video.Options.Index,
+				FilePath:  processedPath,
+				IsYouTube: false,
+				Original:  video,
+			})
 		} else {
-			videoFiles = append(videoFiles, videoPath)
+			videoClips = append(videoClips, VideoClip{
+				Index:     video.Options.Index,
+				FilePath:  videoPath,
+				IsYouTube: false,
+				Original:  video,
+			})
 		}
 	}
 
-	if len(videoFiles) == 0 {
+	if len(videoClips) == 0 {
 		log.Printf("No video files to process for task %s", taskID)
 		task.Status = "failed"
 		task.Message = "No video files to process"
@@ -707,6 +733,61 @@ func processVideoRequest(taskID string, req VideoRequest, uploadedVideos []strin
 			log.Printf("Failed to update failed task %s: %v", taskID, err)
 		}
 		return
+	}
+
+	// Sort video clips by index to ensure proper ordering
+	sort.Slice(videoClips, func(i, j int) bool {
+		return videoClips[i].Index < videoClips[j].Index
+	})
+
+	log.Printf("Video clips sorted by index: %v", func() []int {
+		var indices []int
+		for _, clip := range videoClips {
+			indices = append(indices, clip.Index)
+		}
+		return indices
+	}())
+
+	// Extract file paths in sorted order
+	var videoFiles []string
+	for _, clip := range videoClips {
+		videoFiles = append(videoFiles, clip.FilePath)
+		log.Printf("Adding video file to merge (index %d): %s", clip.Index, clip.FilePath)
+	}
+
+	// Process audio files if provided
+	var audioFiles []string
+	if len(req.Audio) > 0 {
+		log.Printf("Processing %d audio files", len(req.Audio))
+		task.Message = "Processing audio files"
+		task.Progress = 60
+		if err := db.UpdateTask(task); err != nil {
+			log.Printf("Failed to update task %s progress: %v", taskID, err)
+		}
+
+		for i, audio := range req.Audio {
+			// Find the corresponding uploaded audio path
+			var audioPath string
+			for _, uploadedPath := range uploadedAudio {
+				if strings.HasSuffix(uploadedPath, filepath.Base(audio.File)) {
+					audioPath = uploadedPath
+					break
+				}
+			}
+
+			if audioPath == "" {
+				log.Printf("Failed to find uploaded audio path for %s", audio.File)
+				continue
+			}
+
+			// Process audio with options (volume, fade in/out)
+			processedAudioPath := filepath.Join(taskDir, fmt.Sprintf("processed_audio_%d.mp3", i))
+			if err := processAudioFile(audioPath, processedAudioPath, audio.Options); err != nil {
+				log.Printf("Failed to process audio file %d: %v", i, err)
+				continue
+			}
+			audioFiles = append(audioFiles, processedAudioPath)
+		}
 	}
 
 	// Merge videos
@@ -721,14 +802,27 @@ func processVideoRequest(taskID string, req VideoRequest, uploadedVideos []strin
 	outputPath := filepath.Join(config.AppConfig.File.OutputDir, outputFileName)
 	log.Printf("Output path for task %s: %s", taskID, outputPath)
 
-	if err := mergeVideos(videoFiles, outputPath, req.OutputSize, req.FPS); err != nil {
-		log.Printf("Failed to merge videos for task %s: %v", taskID, err)
-		task.Status = "failed"
-		task.Message = fmt.Sprintf("Failed to merge videos: %v", err)
-		if err := db.UpdateTask(task); err != nil {
-			log.Printf("Failed to update failed task %s: %v", taskID, err)
+	// If we have audio files, merge them with the video
+	if len(audioFiles) > 0 {
+		if err := mergeVideosWithAudio(videoFiles, audioFiles, outputPath, req.OutputSize, req.FPS); err != nil {
+			log.Printf("Failed to merge videos with audio for task %s: %v", taskID, err)
+			task.Status = "failed"
+			task.Message = fmt.Sprintf("Failed to merge videos with audio: %v", err)
+			if err := db.UpdateTask(task); err != nil {
+				log.Printf("Failed to update failed task %s: %v", taskID, err)
+			}
+			return
 		}
-		return
+	} else {
+		if err := mergeVideos(videoFiles, outputPath, req.OutputSize, req.FPS); err != nil {
+			log.Printf("Failed to merge videos for task %s: %v", taskID, err)
+			task.Status = "failed"
+			task.Message = fmt.Sprintf("Failed to merge videos: %v", err)
+			if err := db.UpdateTask(task); err != nil {
+				log.Printf("Failed to update failed task %s: %v", taskID, err)
+			}
+			return
+		}
 	}
 
 	// Complete task
@@ -825,23 +919,40 @@ func applyVideoEffects(inputPath, outputPath string, slowmotion, mute bool) erro
 }
 
 func mergeVideos(inputFiles []string, outputPath, outputSize string, fps int) error {
-	log.Printf("Merging %d videos to %s with size %s", len(inputFiles), outputPath, outputSize)
+	log.Printf("Merging %d videos to %s with size %s and FPS %d", len(inputFiles), outputPath, outputSize, fps)
 
 	if len(inputFiles) == 0 {
 		log.Printf("No input files provided for merge")
 		return fmt.Errorf("no input files provided")
 	}
 
-	// Create input file list for ffmpeg
-	listFile := strings.TrimSuffix(outputPath, ".mp4") + "_list.txt"
-	listContent := ""
-	for _, file := range inputFiles {
+	// Normalize all videos to the target FPS first
+	var normalizedFiles []string
+	for i, file := range inputFiles {
 		// Check if file exists
 		if _, err := os.Stat(file); os.IsNotExist(err) {
 			log.Printf("Input file does not exist: %s", file)
 			return fmt.Errorf("input file does not exist: %s", file)
 		}
 
+		// Normalize FPS if needed
+		normalizedPath := file
+		if i > 0 || len(inputFiles) > 1 {
+			// For multiple files or if we want to ensure consistency, normalize FPS
+			normalizedPath = strings.TrimSuffix(file, filepath.Ext(file)) + "_normalized.mp4"
+			if err := normalizeVideoFPS(file, normalizedPath, fps); err != nil {
+				log.Printf("Failed to normalize FPS for %s: %v", file, err)
+				return fmt.Errorf("failed to normalize FPS: %v", err)
+			}
+			defer os.Remove(normalizedPath) // Clean up temporary file
+		}
+		normalizedFiles = append(normalizedFiles, normalizedPath)
+	}
+
+	// Create input file list for ffmpeg
+	listFile := strings.TrimSuffix(outputPath, ".mp4") + "_list.txt"
+	listContent := ""
+	for _, file := range normalizedFiles {
 		// Convert to absolute path to avoid relative path issues
 		absPath, err := filepath.Abs(file)
 		if err != nil {
@@ -849,7 +960,7 @@ func mergeVideos(inputFiles []string, outputPath, outputSize string, fps int) er
 			return fmt.Errorf("failed to resolve file path: %v", err)
 		}
 		listContent += fmt.Sprintf("file '%s'\n", absPath)
-		log.Printf("Adding file to merge list: %s (absolute: %s)", file, absPath)
+		log.Printf("Adding normalized file to merge list: %s (absolute: %s)", file, absPath)
 	}
 
 	log.Printf("Creating input list file: %s", listFile)
@@ -1012,4 +1123,186 @@ func uploadFileHandler(c *gin.Context) {
 	fileURL := "/uploads/" + fileInfo.StoredName
 	log.Printf("Upload successful: %s -> %s", header.Filename, fileURL)
 	c.JSON(http.StatusOK, gin.H{"url": fileURL})
+}
+
+func processAudioFile(inputPath, outputPath string, options AudioOptions) error {
+	log.Printf("Processing audio file: %s with volume %.2f, fadeIn: %v, fadeOut: %v",
+		inputPath, options.Volume, options.FadeIn, options.FadeOut)
+
+	// Build ffmpeg command for audio processing
+	args := []string{
+		"-i", inputPath,
+	}
+
+	// Apply volume adjustment
+	if options.Volume != 1.0 {
+		args = append(args, "-af", fmt.Sprintf("volume=%.2f", options.Volume))
+	}
+
+	// Apply fade in/out effects
+	if options.FadeIn || options.FadeOut {
+		filter := ""
+		if options.FadeIn {
+			filter += "fade=t=in:st=0:d=2,"
+		}
+		if options.FadeOut {
+			// Get duration first to calculate fade out start time
+			durationCmd := exec.Command("ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", inputPath)
+			durationOutput, err := durationCmd.Output()
+			if err != nil {
+				log.Printf("Failed to get audio duration: %v", err)
+				return fmt.Errorf("failed to get audio duration: %v", err)
+			}
+
+			durationStr := strings.TrimSpace(string(durationOutput))
+			duration, err := strconv.ParseFloat(durationStr, 64)
+			if err != nil {
+				log.Printf("Failed to parse audio duration: %v", err)
+				return fmt.Errorf("failed to parse audio duration: %v", err)
+			}
+
+			fadeOutStart := duration - 2.0 // 2 second fade out
+			if fadeOutStart < 0 {
+				fadeOutStart = 0
+			}
+			filter += fmt.Sprintf("fade=t=out:st=%.2f:d=2", fadeOutStart)
+		}
+
+		// Remove trailing comma if both fade in and out
+		if options.FadeIn && options.FadeOut {
+			filter = strings.TrimSuffix(filter, ",")
+		}
+
+		args = append(args, "-af", filter)
+	}
+
+	// Output settings
+	args = append(args,
+		"-c:a", "aac",
+		"-b:a", "128k",
+		outputPath,
+	)
+
+	log.Printf("Running ffmpeg audio processing command: ffmpeg %v", args)
+	cmd := exec.Command("ffmpeg", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("ffmpeg audio processing failed: %v, output: %s", err, string(output))
+		return fmt.Errorf("ffmpeg audio processing failed: %v, output: %s", err, string(output))
+	}
+
+	log.Printf("Audio processing completed successfully: %s", outputPath)
+	return nil
+}
+
+func mergeVideosWithAudio(videoFiles, audioFiles []string, outputPath, outputSize string, fps int) error {
+	log.Printf("Merging %d videos with %d audio files to %s", len(videoFiles), len(audioFiles), outputPath)
+
+	if len(videoFiles) == 0 {
+		log.Printf("No video files provided for merge")
+		return fmt.Errorf("no video files provided")
+	}
+
+	// First, merge videos without audio
+	tempVideoPath := strings.TrimSuffix(outputPath, ".mp4") + "_temp_video.mp4"
+	if err := mergeVideos(videoFiles, tempVideoPath, outputSize, fps); err != nil {
+		log.Printf("Failed to merge videos: %v", err)
+		return fmt.Errorf("failed to merge videos: %v", err)
+	}
+	defer os.Remove(tempVideoPath)
+
+	// Parse output size
+	var width, height int
+	switch outputSize {
+	case "16:9":
+		width, height = 1920, 1080
+	case "9:16":
+		width, height = 1080, 1920
+	case "1:1":
+		width, height = 1080, 1080
+	case "4:3":
+		width, height = 1440, 1080
+	case "3:4":
+		width, height = 1080, 1440
+	default:
+		width, height = 1920, 1080
+	}
+
+	// Build ffmpeg command to merge video with audio
+	args := []string{
+		"-i", tempVideoPath,
+	}
+
+	// Add audio inputs
+	for _, audioFile := range audioFiles {
+		args = append(args, "-i", audioFile)
+	}
+
+	// Build complex filter for mixing audio
+	if len(audioFiles) > 0 {
+		filter := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2", width, height, width, height)
+
+		// Mix all audio tracks
+		audioMix := ""
+		for i := range audioFiles {
+			if i > 0 {
+				audioMix += "+"
+			}
+			audioMix += fmt.Sprintf("[%d:a]", i+1) // +1 because first input is video
+		}
+		if audioMix != "" {
+			filter += fmt.Sprintf(";[%s]amix=inputs=%d:duration=longest", audioMix, len(audioFiles))
+		}
+
+		args = append(args, "-filter_complex", filter)
+	}
+
+	// Output settings
+	args = append(args,
+		"-c:v", "libx264",
+		"-crf", "23",
+		"-preset", "medium",
+		"-r", fmt.Sprintf("%d", fps),
+		"-c:a", "aac",
+		"-b:a", "128k",
+		outputPath,
+	)
+
+	log.Printf("Running ffmpeg merge with audio command: ffmpeg %v", args)
+	cmd := exec.Command("ffmpeg", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("ffmpeg merge with audio failed: %v, output: %s", err, string(output))
+		return fmt.Errorf("ffmpeg merge with audio failed: %v, output: %s", err, string(output))
+	}
+
+	log.Printf("Videos merged with audio successfully: %s", outputPath)
+	return nil
+}
+
+func normalizeVideoFPS(inputPath, outputPath string, targetFPS int) error {
+	log.Printf("Normalizing video FPS: %s -> %s (target: %d fps)", inputPath, outputPath, targetFPS)
+
+	// Build ffmpeg command to normalize FPS
+	args := []string{
+		"-i", inputPath,
+		"-vf", fmt.Sprintf("fps=fps=%d:round=up", targetFPS),
+		"-c:v", "libx264",
+		"-crf", "23",
+		"-preset", "medium",
+		"-c:a", "aac",
+		"-b:a", "128k",
+		outputPath,
+	}
+
+	log.Printf("Running ffmpeg FPS normalization command: ffmpeg %v", args)
+	cmd := exec.Command("ffmpeg", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("ffmpeg FPS normalization failed: %v, output: %s", err, string(output))
+		return fmt.Errorf("ffmpeg FPS normalization failed: %v, output: %s", err, string(output))
+	}
+
+	log.Printf("Video FPS normalized successfully: %s", outputPath)
+	return nil
 }

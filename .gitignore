@@ -11,3 +11,5 @@ database/
 static/_next/
 *.db
 */*.db
+.DS_Store
+clipflow
